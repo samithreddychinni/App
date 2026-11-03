@@ -335,9 +335,10 @@ function SidebarOrderedReportsContextProvider({
         return result;
     }, [reportsDrafts]);
 
-    useEffect(() => {
+    // Update this cache before committing so a report write does not schedule another commit.
+    if (currentReportsToDisplay !== reportsToDisplayInLHN) {
         setCurrentReportsToDisplay(reportsToDisplayInLHN);
-    }, [reportsToDisplayInLHN]);
+    }
 
     const getOrderedReportIDs = useCallback(
         () => SidebarUtils.sortReportsToDisplayInLHN(reportsToDisplayInLHN, priorityMode, localeCompare, hasDraftByReportID, reportNameValuePairs, reportAttributes),

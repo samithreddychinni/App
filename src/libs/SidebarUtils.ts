@@ -434,7 +434,35 @@ function updateReportsToDisplayInLHN({
         return displayedReportsCopy;
     };
 
-    for (const reportID of updatedReportsKeys) {
+    const updatedReportKeys = new Set(updatedReportsKeys);
+    const reportKeysToRecheck = new Set(updatedReportKeys);
+
+    // Parent and chat changes can also make a previously hidden row eligible for the sidebar.
+    for (const reportKey of Object.keys(reports ?? {})) {
+        const report = reports?.[reportKey];
+        if (!report) {
+            continue;
+        }
+        if (
+            (!!report.parentReportID && updatedReportKeys.has(`${ONYXKEYS.COLLECTION.REPORT}${report.parentReportID}`)) ||
+            (!!report.chatReportID && updatedReportKeys.has(`${ONYXKEYS.COLLECTION.REPORT}${report.chatReportID}`))
+        ) {
+            reportKeysToRecheck.add(reportKey);
+        }
+    }
+
+    // In Focus mode, reading a hidden expense thread can also change its parent's unread state.
+    for (const reportKey of updatedReportKeys) {
+        const report = reports?.[reportKey] ?? displayedReports[reportKey];
+        for (const linkedReportID of [report?.parentReportID, report?.chatReportID]) {
+            const linkedReportKey = `${ONYXKEYS.COLLECTION.REPORT}${linkedReportID}`;
+            if (linkedReportID && reports?.[linkedReportKey]) {
+                reportKeysToRecheck.add(linkedReportKey);
+            }
+        }
+    }
+
+    for (const reportID of reportKeysToRecheck) {
         const report = reports?.[reportID];
         if (!report) {
             if (reportID in displayedReports) {
