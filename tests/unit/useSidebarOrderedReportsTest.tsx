@@ -234,6 +234,47 @@ describe('useSidebarOrderedReports', () => {
         );
     });
 
+    it('should retain the empty cache when a full rebuild still finds no reports', async () => {
+        // Given an empty sidebar, every full build returns a new empty object.
+        renderHook(() => useSidebarOrderedReports(), {wrapper: TestWrapper});
+        await waitForBatchedUpdatesWithAct();
+        mockSidebarUtils.getReportsToDisplayInLHN.mockClear();
+        mockSidebarUtils.sortReportsToDisplayInLHN.mockClear();
+
+        // When Focus mode forces another full build without adding a report.
+        await act(async () => {
+            await Onyx.set(ONYXKEYS.NVP_PRIORITY_MODE, CONST.PRIORITY_MODE.GSD);
+        });
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the build runs, but an unchanged empty map does not trigger another sort.
+        expect(mockSidebarUtils.getReportsToDisplayInLHN).toHaveBeenCalled();
+        expect(mockSidebarUtils.sortReportsToDisplayInLHN).not.toHaveBeenCalled();
+
+        // When a report arrives, the empty cache must not prevent it from appearing.
+        const reports = createMockReports({report1: {reportName: 'New chat'}});
+        mockSidebarUtils.getReportsToDisplayInLHN.mockReturnValue(reports);
+        await act(async () => {
+            await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}1`, reports['1']);
+        });
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the new report reaches the sort that supplies the sidebar.
+        expect(mockSidebarUtils.sortReportsToDisplayInLHN).toHaveBeenCalledWith(reports, expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything());
+        mockSidebarUtils.sortReportsToDisplayInLHN.mockClear();
+
+        // When the last report is removed, a newly empty result must replace the populated cache.
+        mockSidebarUtils.getReportsToDisplayInLHN.mockReturnValue({});
+        mockSidebarUtils.updateReportsToDisplayInLHN.mockReturnValue({});
+        await act(async () => {
+            await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}1`, null);
+        });
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the empty result reaches the sidebar instead of retaining the deleted report.
+        expect(mockSidebarUtils.sortReportsToDisplayInLHN).toHaveBeenCalledWith({}, expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    });
+
     it('should handle empty reports correctly with deep comparison', async () => {
         // Given the initial reports are set
         mockSidebarUtils.getReportsToDisplayInLHN.mockReturnValue({});

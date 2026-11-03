@@ -289,7 +289,8 @@ function SidebarOrderedReportsContextProvider({
             });
         }
 
-        return reportsToDisplay;
+        // A full rebuild of an empty sidebar must not schedule a state update without a display change.
+        return !hasCachedReports && Object.keys(reportsToDisplay).length === 0 ? currentReportsToDisplay : reportsToDisplay;
         // Rule disabled intentionally — triggering a re-render on currentReportsToDisplay would cause an infinite loop
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [

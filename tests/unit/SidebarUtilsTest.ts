@@ -4946,6 +4946,99 @@ describe('SidebarUtils', () => {
         });
 
         describe('updateReportsToDisplayInLHN', () => {
+            it.each(['unread', 'attention', 'errors'] as const)('should preserve an unchanged %s entry from a full build and incremental updates', (flag) => {
+                // Given a displayed report with one flag, including reports without an error flag.
+                const report: Report = {
+                    reportID: '1',
+                    type: CONST.REPORT.TYPE.CHAT,
+                    isPinned: true,
+                    lastVisibleActionCreated: '2024-01-02 10:00:00',
+                    lastReadTime: flag === 'unread' ? '2024-01-01 10:00:00' : '2024-01-03 10:00:00',
+                };
+                const reportKey = `${ONYXKEYS.COLLECTION.REPORT}${report.reportID}` as const;
+                const attributes: ReportAttributes = {
+                    reportName: 'Chat',
+                    isEmpty: false,
+                    brickRoadStatus: undefined,
+                    requiresAttention: flag === 'attention',
+                    reportErrors: flag === 'errors' ? {test: 'Report error'} : {},
+                };
+                const inputs = {
+                    reports: {[reportKey]: report},
+                    policies: {},
+                    currentReportId: report.reportID,
+                    isDefaultRoomsBetaEnabled: false,
+                    transactions: {},
+                    transactionViolations: {},
+                    reportNameValuePairs: {},
+                    reportAttributes: {[report.reportID]: attributes},
+                    draftComments: {},
+                    isOffline: false,
+                    currentUserLogin: CURRENT_USER_LOGIN,
+                    currentUserAccountID: CURRENT_USER_ACCOUNT_ID,
+                    guideAccountIDs: [],
+                    conciergeReportID: undefined,
+                    session: undefined,
+                };
+                const displayedReports = SidebarUtils.getReportsToDisplayInLHN({...inputs, priorityMode: CONST.PRIORITY_MODE.DEFAULT});
+                expect(displayedReports[reportKey]).not.toBe(report);
+                if (flag !== 'errors') {
+                    expect(displayedReports[reportKey]?.hasErrorsOtherThanFailedReceipt).toBeUndefined();
+                }
+                const updateInputs = {...inputs, updatedReportsKeys: [reportKey], isInFocusMode: false};
+
+                // When the same report is checked after a full build and after an incremental change.
+                const unchanged = SidebarUtils.updateReportsToDisplayInLHN({...updateInputs, displayedReports});
+                const changedReport = {...report, reportName: 'Renamed chat'};
+                const changed = SidebarUtils.updateReportsToDisplayInLHN({...updateInputs, displayedReports, reports: {[reportKey]: changedReport}});
+                const repeated = SidebarUtils.updateReportsToDisplayInLHN({...updateInputs, displayedReports: changed, reports: {[reportKey]: changedReport}});
+
+                // Then only the real report change creates a map and an entry.
+                expect(unchanged).toBe(displayedReports);
+                expect(unchanged[reportKey]).toBe(displayedReports[reportKey]);
+                expect(changed).not.toBe(displayedReports);
+                expect(changed[reportKey]?.reportName).toBe('Renamed chat');
+                expect(repeated).toBe(changed);
+                expect(repeated[reportKey]).toBe(changed[reportKey]);
+
+                // When a derived flag changes while the raw report stays the same.
+                const changedFlag = SidebarUtils.updateReportsToDisplayInLHN({
+                    ...updateInputs,
+                    displayedReports,
+                    reportAttributes: {[report.reportID]: {...attributes, requiresAttention: !attributes.requiresAttention}},
+                });
+
+                // Then the entry changes even though the source report reference did not change.
+                expect(changedFlag).not.toBe(displayedReports);
+                if (flag === 'attention') {
+                    expect(changedFlag[reportKey]).toBe(report);
+                } else {
+                    expect(changedFlag[reportKey]?.requiresAttention).toBe(true);
+                }
+
+                // When all flags are cleared, the entry must become the raw report again.
+                const readReport = {...report, lastReadTime: '2024-01-03 10:00:00'};
+                const cleared = SidebarUtils.updateReportsToDisplayInLHN({
+                    ...updateInputs,
+                    displayedReports,
+                    reports: {[reportKey]: readReport},
+                    reportAttributes: {[report.reportID]: {...attributes, requiresAttention: false, reportErrors: {}}},
+                });
+
+                // Then stale flags do not remain in the sidebar cache.
+                expect(cleared[reportKey]).toBe(readReport);
+                expect(cleared[reportKey]?.isUnreadReport).toBeUndefined();
+                expect(cleared[reportKey]?.requiresAttention).toBeUndefined();
+                expect(cleared[reportKey]?.hasErrorsOtherThanFailedReceipt).toBeUndefined();
+
+                // When the flagged report is deleted, the cached copy must also disappear.
+                const removed = SidebarUtils.updateReportsToDisplayInLHN({...updateInputs, displayedReports, reports: {}});
+
+                // Then source tracking does not keep deleted reports visible.
+                expect(removed).not.toBe(displayedReports);
+                expect(removed[reportKey]).toBeUndefined();
+            });
+
             it('should return the same reference when no entries actually change', () => {
                 const reports: OnyxCollection<Report> = {
                     [`${ONYXKEYS.COLLECTION.REPORT}1`]: createRandomReport(1, undefined),
