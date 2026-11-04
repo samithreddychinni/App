@@ -1,5 +1,5 @@
 import Log from '@libs/Log';
-import {setIsRevealingPreMountedFullscreen, takePreMountedFullscreenForReveal} from '@libs/Navigation/helpers/preMountBuffer';
+import {markFullscreenPreInsertedUnderRHP, setIsRevealingPreMountedFullscreen, takePreMountedFullscreenForReveal} from '@libs/Navigation/helpers/preMountBuffer';
 import {finishWideTabPreMountReveal} from '@libs/Navigation/helpers/wideTabPreMount';
 import {isLiveWideTabPreMountRouteKey, isStaleWideTabPreMountRouteKey} from '@libs/Navigation/helpers/wideTabPreMountRouteKey';
 import Navigation from '@libs/Navigation/Navigation';
@@ -342,9 +342,9 @@ describe('Navigation pre-mount buffer', () => {
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it('tab-switch mode: RHP-closed listener restores the original tab route instead of popping a pushed destination', () => {
+    it.each([false, true])('tab-switch dismissal restores the original with a newer tab present: %s', (hasNewerTab) => {
         // Given a buffered tab switch that replaced the original tab route beneath the RHP
-        mockOriginalTabRoute = {key: 'tab-origin', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
+        mockOriginalTabRoute = {key: 'tab-1', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
         mockStateFromPathRoutes = [{key: 'target', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.SEARCH.ROOT}]} as PartialState<NavigationState>}];
 
         const TAB_KEY = 'tab-1';
@@ -364,11 +364,16 @@ describe('Navigation pre-mount buffer', () => {
         Navigation.preInsertFullscreenUnderRHP(ROUTES.HOME);
         mockDispatch.mockClear();
 
+        const savedOriginal = mockOriginalTabRoute;
+        const newerTab = {key: 'newer-tab', name: NAVIGATORS.TAB_NAVIGATOR};
         // RHP dismissed externally while the tab-switch buffer transaction is still live.
         setRootState([
             {key: TAB_KEY, name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.SEARCH.ROOT}]} as PartialState<NavigationState>},
             {key: BUFFER_KEY, name: SCREENS.PRE_MOUNT_BUFFER},
         ]);
+        if (hasNewerTab && mockRootState) {
+            mockRootState.routes.push(newerTab);
+        }
         // When the RHP is dismissed outside the normal completion paths
         mockStateListener?.();
 
@@ -376,13 +381,17 @@ describe('Navigation pre-mount buffer', () => {
         expect(mockDispatch).toHaveBeenCalledTimes(1);
         const resetAction = mockDispatch.mock.calls.at(0)?.at(0);
         const restoredTabRoute = resetAction?.payload?.routes?.find((r) => r.key === TAB_KEY);
-        expect(restoredTabRoute).toEqual(mockOriginalTabRoute);
+        expect(restoredTabRoute).toEqual(savedOriginal);
+        expect(resetAction?.payload?.routes?.filter((route) => route.key === TAB_KEY)).toHaveLength(1);
+        if (hasNewerTab) {
+            expect(resetAction?.payload?.routes?.find((route) => route.key === newerTab.key)).toEqual(newerTab);
+        }
         expect(resetAction?.payload?.routes?.some((r) => r.key === BUFFER_KEY)).toBe(false);
     });
 
     it('tab-switch mode falls back to stripping the Buffer when the original tab route was cleared', () => {
         // Given a buffered tab switch whose saved origin is no longer available
-        mockOriginalTabRoute = {key: 'tab-origin', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
+        mockOriginalTabRoute = {key: 'tab-1', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
         mockStateFromPathRoutes = [{key: 'target', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.SEARCH.ROOT}]} as PartialState<NavigationState>}];
 
         const TAB_KEY = 'tab-1';
@@ -770,15 +779,20 @@ describe('Navigation pre-mount buffer', () => {
         expect(resetAction?.payload?.routes?.map((r) => r.key)).toEqual([ORIGIN_KEY]);
     });
 
-    it('recoverFromPreMountBuffer fallback restores the original tab route when the stranded buffer came from a tab switch', () => {
+    it.each([false, true])('fallback recovery restores the original with a newer tab present: %s', (hasNewerTab) => {
         // Given a stranded tab-switch buffer with its original tab snapshot still available
         const TAB_KEY = 'tab-1';
-        mockOriginalTabRoute = {key: 'tab-origin', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
+        mockOriginalTabRoute = {key: 'tab-1', name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
         setRootState([
             {key: TAB_KEY, name: NAVIGATORS.TAB_NAVIGATOR, state: {index: 0, routes: [{name: SCREENS.SEARCH.ROOT}]} as PartialState<NavigationState>},
             {key: BUFFER_KEY, name: SCREENS.PRE_MOUNT_BUFFER},
         ]);
 
+        const savedOriginal = mockOriginalTabRoute;
+        const newerTab = {key: 'newer-tab', name: NAVIGATORS.TAB_NAVIGATOR};
+        if (hasNewerTab) {
+            mockRootState?.routes.splice(1, 0, newerTab);
+        }
         // When startup recovery handles the interrupted tab switch
         Navigation.recoverFromPreMountBuffer();
 
@@ -786,7 +800,11 @@ describe('Navigation pre-mount buffer', () => {
         expect(mockDispatch).toHaveBeenCalledTimes(1);
         const resetAction = mockDispatch.mock.calls.at(0)?.at(0);
         const restoredTabRoute = resetAction?.payload?.routes?.find((r) => r.key === TAB_KEY);
-        expect(restoredTabRoute).toEqual(mockOriginalTabRoute);
+        expect(restoredTabRoute).toEqual(savedOriginal);
+        expect(resetAction?.payload?.routes?.filter((route) => route.key === TAB_KEY)).toHaveLength(1);
+        if (hasNewerTab) {
+            expect(resetAction?.payload?.routes?.find((route) => route.key === newerTab.key)).toEqual(newerTab);
+        }
         expect(resetAction?.payload?.routes?.some((r) => r.key === BUFFER_KEY)).toBe(false);
         expect(mockClearPreInsertedOriginalTabRoute).toHaveBeenCalledTimes(1);
     });
@@ -821,5 +839,41 @@ describe('Navigation pre-mount buffer', () => {
         expect(Navigation.getIsRevealingPreMountedFullscreen()).toBe(true);
         setIsRevealingPreMountedFullscreen(false);
         jest.useRealTimers();
+    });
+    it('fallback recovery preserves a newer tab when the original route has disappeared', () => {
+        // Given the saved origin is gone and only a subsequently pushed tab remains under Buffer
+        mockOriginalTabRoute = {key: 'missing-original', name: NAVIGATORS.TAB_NAVIGATOR};
+        const newerTab = {key: 'newer-tab', name: NAVIGATORS.TAB_NAVIGATOR};
+        setRootState([newerTab, {key: BUFFER_KEY, name: SCREENS.PRE_MOUNT_BUFFER}]);
+        // When startup recovery removes the stranded temporary buffer
+        Navigation.recoverFromPreMountBuffer();
+        // Then the real newer route survives instead of being removed or overwritten
+        expect(mockDispatch.mock.calls.at(0)?.at(0)?.payload?.routes).toEqual([newerTab]);
+    });
+    it.each([false, true])('deferred cancellation targets only the original tab, missing at frame time: %s', (isOriginalMissing) => {
+        // Given an unbuffered tab switch and a newer tab pushed before cancellation
+        const originalTab = {key: 'original-tab', name: NAVIGATORS.TAB_NAVIGATOR, state: {key: 'original-state', index: 0, routes: [{name: SCREENS.INBOX}]} as PartialState<NavigationState>};
+        const newerTab = {key: 'newer-tab', name: NAVIGATORS.TAB_NAVIGATOR, state: {key: 'newer-state', routes: [{name: SCREENS.SEARCH.ROOT}]} as PartialState<NavigationState>};
+        mockOriginalTabRoute = originalTab;
+        markFullscreenPreInsertedUnderRHP(NAVIGATORS.TAB_NAVIGATOR);
+        setRootState([originalTab, newerTab]);
+        let scheduledFrame: FrameRequestCallback | undefined;
+        const frameSpy = jest.spyOn(global, 'requestAnimationFrame').mockImplementation((callback) => {
+            scheduledFrame = callback;
+            return 0;
+        });
+        // When cancellation runs after navigation may have removed its original route
+        Navigation.removePreInsertedFullscreenIfNeeded();
+        if (isOriginalMissing) {
+            setRootState([newerTab]);
+        }
+        scheduledFrame?.(0);
+        // Then the later tab is never jumped to the old tab name
+        if (isOriginalMissing) {
+            expect(mockDispatch).not.toHaveBeenCalled();
+        } else {
+            expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({target: 'original-state', type: 'JUMP_TO'}));
+        }
+        frameSpy.mockRestore();
     });
 });

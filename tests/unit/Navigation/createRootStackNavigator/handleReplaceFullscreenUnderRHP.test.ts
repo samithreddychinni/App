@@ -1141,3 +1141,31 @@ describe('handleReplaceFullscreenUnderRHP / handleRemoveFullscreenUnderRHP — s
         expect(removeResult?.routes.at(-1)?.name).toBe(NAVIGATORS.RIGHT_MODAL_NAVIGATOR);
     });
 });
+
+describe('Issue 103777: restoring the pre-mounted route by identity', () => {
+    it.each([false, true])('preserves a subsequently pushed tab when the original is missing: %s', (isOriginalMissing) => {
+        // Given pre-mounting replaced one tab before another tab and RHP were pushed
+        clearPreInsertedOriginalTabRoute();
+        mockGetPlatform.mockReturnValue('ios');
+        mockGetIsNarrowLayout.mockReturnValue(true);
+        mockStubbedParsedState = makeParsedState(INCOMING_SPLIT_ONLY);
+        const original = makeExistingState([{name: SCREENS.WORKSPACES_LIST}]);
+        const inserted = handleReplaceFullscreenUnderRHP(original, makeAction(), CONFIG_OPTIONS, stackRouter);
+        expect(inserted).not.toBeNull();
+        const newerTab = makeRoute(NAVIGATORS.TAB_NAVIGATOR, undefined, {index: 0, routes: [{name: NAVIGATORS.SEARCH_FULLSCREEN_NAVIGATOR}]}, 'newer-tab');
+        const secondModal = makeRoute(NAVIGATORS.RIGHT_MODAL_NAVIGATOR, undefined, undefined, 'second-modal');
+        const routes = [...(inserted?.routes ?? []).filter((route) => !isOriginalMissing || route.key !== 'tab-nav-key'), newerTab, secondModal];
+        // When cancellation restores the saved route
+        const result = handleRemoveFullscreenUnderRHP({...original, routes, index: routes.length - 1}, makeRemoveAction(), CONFIG_OPTIONS, stackRouter);
+        // Then a missing original leaves the new stack alone; otherwise only the original slot is restored
+        if (isOriginalMissing) {
+            expect(result).toBeNull();
+        } else {
+            expect(result?.routes.at(0)).toEqual(original.routes.at(0));
+            expect(result?.routes.at(-2)).toEqual(newerTab);
+            const keys = result?.routes.map((route) => route.key) ?? [];
+            expect(new Set(keys).size).toBe(keys.length);
+        }
+        clearPreInsertedOriginalTabRoute();
+    });
+});
