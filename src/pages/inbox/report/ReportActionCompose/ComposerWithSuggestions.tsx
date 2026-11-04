@@ -49,6 +49,8 @@ import {inputFocusChange} from '@userActions/InputFocus';
 import {areAllModalsHidden} from '@userActions/Modal';
 import {broadcastUserIsTyping, saveReportActionDraft, saveReportDraftComment} from '@userActions/Report';
 
+import Navigation from '@libs/Navigation/Navigation';
+
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import SCREENS from '@src/SCREENS';
@@ -821,7 +823,8 @@ function ComposerWithSuggestions({
      */
     const checkComposerVisibility = useCallback(() => {
         // Checking whether the screen is focused or not, helps avoid `modal.isVisible` false when popups are closed, even if the modal is opened.
-        const isComposerCoveredUp = !isFocused || isEmojiPickerVisible() || isMenuVisible || !!modal?.isVisible || modal?.willAlertModalBecomeVisible;
+        const isCoveredByModal = Navigation.isTopmostRouteModalScreen() ? !areAllModalsHidden() : !!modal?.isVisible;
+        const isComposerCoveredUp = !isFocused || isEmojiPickerVisible() || isMenuVisible || isCoveredByModal || modal?.willAlertModalBecomeVisible;
         return !isComposerCoveredUp;
     }, [isMenuVisible, modal?.isVisible, modal?.willAlertModalBecomeVisible, isFocused]);
 

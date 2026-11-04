@@ -3,18 +3,22 @@ import {useSearchResultsContext} from '@components/Search/SearchContext';
 import Text from '@components/Text';
 
 import useFilterPendingDeleteReports from '@hooks/useFilterPendingDeleteReports';
+import useKeyboardShortcut from '@hooks/useKeyboardShortcut';
 import useLocalize from '@hooks/useLocalize';
 import useOnyx from '@hooks/useOnyx';
 import useSearchSections from '@hooks/useSearchSections';
 import useShouldReturnTripRooms from '@hooks/useShouldReturnTripRooms';
 import useThemeStyles from '@hooks/useThemeStyles';
 
+import getPlatform from '@libs/getPlatform';
 import {startSpan} from '@libs/telemetry/activeSpans';
 
 import Navigation from '@navigation/Navigation';
 
 import {saveLastSearchParams} from '@userActions/ReportNavigation';
 import {search} from '@userActions/Search';
+
+import {willAlertModalBecomeVisibleSelector} from '@selectors/Modal';
 
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -44,6 +48,9 @@ type SnapshotGuard = {
     hasMultiple: boolean;
     includesReport: boolean;
 };
+
+// Native keydown handling doesn't skip text inputs, so the arrow keys only page between reports on web.
+const isWeb = getPlatform() === CONST.PLATFORM.WEB;
 
 const EMPTY_GUARD: SnapshotGuard = {
     hasMultiple: false,
@@ -130,6 +137,7 @@ function MoneyRequestReportNavigationContent({reportID, shouldDisplayNarrowVersi
     // Lightweight subscriptions only: the current search query and its loading flag. These never mount
     // the heavy useSearchSections subscription set, so the fast context path stays cheap.
     const [lastSearchQuery] = useOnyx(ONYXKEYS.REPORT_NAVIGATION_LAST_SEARCH_QUERY);
+    const [isModalOpenOnTop] = useOnyx(ONYXKEYS.MODAL, {selector: willAlertModalBecomeVisibleSelector});
     const shouldReturnTripRooms = useShouldReturnTripRooms(lastSearchQuery?.queryJSON?.type);
     const [isSearchLoading = false] = useOnyx(`${ONYXKEYS.COLLECTION.SNAPSHOT}${lastSearchQuery?.queryJSON?.hash}`, {selector: searchLoadingSelector});
 
@@ -249,6 +257,30 @@ function MoneyRequestReportNavigationContent({reportID, shouldDisplayNarrowVersi
         const prevIndex = (currentIndex - 1) % effectiveAllReports.length;
         goToReportId(effectiveAllReports.at(prevIndex));
     };
+
+    const isArrowKeyNavigationActive = isWeb && isFocused && !isModalOpenOnTop && shouldDisplayNavigationArrows;
+
+    useKeyboardShortcut(
+        CONST.KEYBOARD_SHORTCUTS.ARROW_LEFT,
+        (event) => {
+            if (event?.defaultPrevented || hidePrevButton) {
+                return;
+            }
+            goToPrevReport();
+        },
+        {captureOnInputs: false, isActive: isArrowKeyNavigationActive && !hidePrevButton},
+    );
+
+    useKeyboardShortcut(
+        CONST.KEYBOARD_SHORTCUTS.ARROW_RIGHT,
+        (event) => {
+            if (event?.defaultPrevented || hideNextButton) {
+                return;
+            }
+            goToNextReport();
+        },
+        {captureOnInputs: false, isActive: isArrowKeyNavigationActive && !hideNextButton},
+    );
 
     return (
         <>
