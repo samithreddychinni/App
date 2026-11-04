@@ -54,9 +54,10 @@ function NetSuiteExportConfigurationPage({policy}: WithPolicyConnectionsProps) {
     const {isBetaEnabled} = usePermissions();
 
     const config = policy?.connections?.netsuite?.options.config;
+    // Skip the per-card list on back unless NetSuite is exporting as Vendor bill or Journal entry (see the NETSUITE case in getExportMenuItem)
+    const netSuiteConfig = config?.nonreimbursableExpensesExportDestination ?? config?.reimbursableExpensesExportDestination;
     const shouldGoBackToSpecificRoute =
-        config?.reimbursableExpensesExportDestination === CONST.NETSUITE_EXPORT_DESTINATION.EXPENSE_REPORT ||
-        config?.nonreimbursableExpensesExportDestination === CONST.NETSUITE_EXPORT_DESTINATION.EXPENSE_REPORT;
+        netSuiteConfig !== CONST.NETSUITE_EXPORT_DESTINATION.VENDOR_BILL && netSuiteConfig !== CONST.NETSUITE_EXPORT_DESTINATION.JOURNAL_ENTRY;
     const backPath = useDynamicBackPath(DYNAMIC_ROUTES.POLICY_ACCOUNTING_NETSUITE_EXPORT.path);
 
     const goBack = () => {
