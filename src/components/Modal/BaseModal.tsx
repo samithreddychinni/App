@@ -185,8 +185,12 @@ function BaseModal({
     }, [isVisible, wasVisible, onClose, type, isModalCovering, handleDismissModal, coveringModalID]);
 
     useEffect(() => {
-        hideModalCallbackRef.current = hideModal;
-    }, [hideModal]);
+        hideModalCallbackRef.current = (callHideCallback) => {
+            // Direct unmount skips onDismiss, so release this modal before restoring composer focus.
+            ComposerFocusManager.setReadyToFocus(uniqueModalId);
+            hideModal(callHideCallback);
+        };
+    }, [hideModal, uniqueModalId]);
 
     useEffect(() => {
         isVisibleRef.current = isVisible;
