@@ -13,12 +13,14 @@ import useOnyx from '@hooks/useOnyx';
 import useThemeIllustrations from '@hooks/useThemeIllustrations';
 import useThemeStyles from '@hooks/useThemeStyles';
 
+import {getActiveServer} from '@libs/ApiUtils';
 import {getPersonalBankCardDetailsImage} from '@libs/CardUtils';
 
 import variables from '@styles/variables';
 
 import {setAddNewPersonalCardStepAndData} from '@userActions/PersonalCards';
 
+import CONFIG from '@src/CONFIG';
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 
@@ -34,6 +36,7 @@ function SelectBankStep() {
     const companyCardBankIcons = useCompanyCardBankIcons();
     const {isOffline} = useNetwork();
 
+    const [activeServer = getActiveServer()] = useOnyx(ONYXKEYS.ACTIVE_SERVER);
     const [addNewPersonalCard] = useOnyx(ONYXKEYS.ADD_NEW_PERSONAL_CARD);
     const [bankSelected, setBankSelected] = useState<ValueOf<typeof CONST.PERSONAL_CARDS.BANKS> | null | undefined>(addNewPersonalCard?.data?.selectedBank);
     const [hasError, setHasError] = useState(false);
@@ -58,7 +61,14 @@ function SelectBankStep() {
         setAddNewPersonalCardStepAndData({step: CONST.PERSONAL_CARDS.STEP.SELECT_COUNTRY, data: {selectedBank: null}});
     };
 
-    const data = Object.values(CONST.PERSONAL_CARDS.BANKS).map((bank) => ({
+    const data = Object.values(CONST.PERSONAL_CARDS.BANKS)
+        .filter((bank) => {
+            if (bank === CONST.PERSONAL_CARDS.BANKS.MOCK_BANK) {
+                return CONFIG.ENVIRONMENT !== CONST.ENVIRONMENT.PRODUCTION || activeServer !== CONST.SERVER.PRODUCTION;
+            }
+            return true;
+        })
+        .map((bank) => ({
         value: bank,
         text: bank === CONST.PERSONAL_CARDS.BANKS.OTHER ? translate('workspace.companyCards.addNewCard.other') : bank,
         keyForList: bank,
