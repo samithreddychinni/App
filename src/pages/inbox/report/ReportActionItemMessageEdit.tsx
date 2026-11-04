@@ -17,7 +17,7 @@ import useStyleUtils from '@hooks/useStyleUtils';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {clearActive, isActive as isEmojiPickerActive} from '@libs/actions/EmojiPickerAction';
-import {composerFocusKeepFocusOn} from '@libs/actions/InputFocus';
+import {composerFocusKeepFocusOn, inputFocusChange} from '@libs/actions/InputFocus';
 import {clearAllReportActionDrafts} from '@libs/actions/Report';
 import {isMobileChrome} from '@libs/Browser';
 import {canSkipTriggerHotkeys, insertText} from '@libs/ComposerUtils';
@@ -137,6 +137,7 @@ function ReportActionItemMessageEdit({action, reportID, originalReportID, policy
     const [onyxInputFocused = false] = useOnyx(ONYXKEYS.INPUT_FOCUSED);
 
     const composerRef = useRef<ComposerRef | null>(null);
+    const latestComposerRef = useRef<ComposerRef | null>(null);
     const draftRef = useRef(draft);
     const emojiPickerSelectionRef = useRef<Selection | undefined>(undefined);
 
@@ -178,13 +179,15 @@ function ReportActionItemMessageEdit({action, reportID, originalReportID, policy
     useEffect(
         // Remove focus callback on unmount to avoid stale callbacks
         () => {
-            if (composerRef.current) {
-                ReportActionComposeFocusManager.editComposerRef.current = composerRef.current;
+            const currentComposer = composerRef.current;
+            if (currentComposer) {
+                ReportActionComposeFocusManager.editComposerRef.current = currentComposer;
             }
             return () => {
-                if (ReportActionComposeFocusManager.editComposerRef.current !== composerRef.current) {
+                if (ReportActionComposeFocusManager.editComposerRef.current !== latestComposerRef.current) {
                     return;
                 }
+                inputFocusChange(false);
                 ReportActionComposeFocusManager.clear(true);
             };
         },
@@ -342,6 +345,13 @@ function ReportActionItemMessageEdit({action, reportID, originalReportID, policy
                             multiline
                             ref={(el) => {
                                 composerRef.current = el;
+                                if (el) {
+                                    // The same focused editor can receive a new handle without another focus event.
+                                    if (ReportActionComposeFocusManager.editComposerRef.current === latestComposerRef.current) {
+                                        ReportActionComposeFocusManager.editComposerRef.current = el;
+                                    }
+                                    latestComposerRef.current = el;
+                                }
                                 if (typeof ref === 'function') {
                                     ref(el);
                                 } else if (ref) {

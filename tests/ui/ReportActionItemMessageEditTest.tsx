@@ -1,11 +1,15 @@
 import {act, fireEvent, render, screen} from '@testing-library/react-native';
 
 import ComposeProviders from '@components/ComposeProviders';
+import Composer from '@components/Composer';
+import type {ComposerRef, ComposerProps} from '@components/Composer/types';
 import {LocaleContextProvider} from '@components/LocaleContextProvider';
 import OnyxListItemProvider from '@components/OnyxListItemProvider';
 import {KeyboardStateProvider} from '@components/withKeyboardState';
 
+import * as InputFocus from '@libs/actions/InputFocus';
 import {editReportComment} from '@libs/actions/Report';
+import ReportActionComposeFocusManager from '@libs/ReportActionComposeFocusManager';
 
 import * as ReportActionContextMenu from '@pages/inbox/report/ContextMenu/ReportActionContextMenu';
 import {ReportActionEditMessageContextProvider} from '@pages/inbox/report/ReportActionEditMessageContext';
@@ -22,6 +26,7 @@ import type {PropsWithChildren} from 'react';
 
 import Onyx from 'react-native-onyx';
 
+import createMock from '../utils/createMock';
 import * as LHNTestUtils from '../utils/LHNTestUtils';
 import * as TestHelper from '../utils/TestHelper';
 
@@ -122,6 +127,57 @@ describe('ReportActionCompose Integration Tests', () => {
     });
 
     describe('Message validation', () => {
+        it('releases edit focus after its ref is detached on unmount', () => {
+            // Given this mounted editor owns the focus manager
+            const changeFocus = jest.spyOn(InputFocus, 'inputFocusChange');
+            const {unmount} = renderReportActionItemMessageEdit();
+            expect(ReportActionComposeFocusManager.editComposerRef.current).not.toBeNull();
+            // When Save or Cancel removes the editor and React detaches its ref first
+            unmount();
+            // Then a later modal close is not blocked by a dead editor
+            expect(changeFocus).toHaveBeenCalledWith(false);
+            expect(ReportActionComposeFocusManager.editComposerRef.current).toBeNull();
+            changeFocus.mockRestore();
+        });
+
+        it.each([false, true])('releases a refreshed handle when another focus event occurs: %s', (shouldRefocus) => {
+            // Given the web composer can replace its imperative handle after text changes
+            const changeFocus = jest.spyOn(InputFocus, 'inputFocusChange');
+            const view = renderReportActionItemMessageEdit();
+            const props: ComposerProps = view.UNSAFE_getByType(Composer).props;
+            const updatedComposer = createMock<ComposerRef>({});
+            expect(typeof props.ref).toBe('function');
+            if (typeof props.ref !== 'function') {
+                throw new Error('The editor must expose its composer ref callback');
+            }
+            // When the same editor receives and focuses the new handle before unmounting
+            props.ref(updatedComposer);
+            if (shouldRefocus) {
+                ReportActionComposeFocusManager.editComposerRef.current = updatedComposer;
+            }
+            expect(ReportActionComposeFocusManager.editComposerRef.current).toBe(updatedComposer);
+            view.unmount();
+            // Then cleanup compares the last handle from this editor, not its obsolete mount-time handle
+            expect(changeFocus).toHaveBeenCalledWith(false);
+            expect(ReportActionComposeFocusManager.editComposerRef.current).toBeNull();
+            changeFocus.mockRestore();
+        });
+
+        it('does not release focus owned by a newer editor', () => {
+            // Given another editor took focus before the old one finishes unmounting
+            const changeFocus = jest.spyOn(InputFocus, 'inputFocusChange');
+            const {unmount} = renderReportActionItemMessageEdit();
+            const newerComposer = createMock<ComposerRef>({});
+            ReportActionComposeFocusManager.editComposerRef.current = newerComposer;
+            changeFocus.mockClear();
+            // When the older editor unmounts
+            unmount();
+            // Then it does not clear the newer editor's ownership or web focus flag
+            expect(changeFocus).not.toHaveBeenCalled();
+            expect(ReportActionComposeFocusManager.editComposerRef.current).toBe(newerComposer);
+            ReportActionComposeFocusManager.clear(true);
+            changeFocus.mockRestore();
+        });
         it('should edit when length is within the limit', async () => {
             renderReportActionItemMessageEdit();
             const composer = screen.getByTestId('composer');
