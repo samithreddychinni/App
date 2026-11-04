@@ -290,6 +290,11 @@ function getUpdatedTransaction({
         lodashSet(updatedTransaction, 'comment.customUnit.defaultP2PRate', null);
         shouldStopSmartscan = true;
 
+        const distanceCustomUnit = DistanceRequestUtils.getDistanceRateCustomUnit(policy);
+        if (distanceCustomUnit?.customUnitID) {
+            lodashSet(updatedTransaction, 'comment.customUnit.customUnitID', distanceCustomUnit.customUnitID);
+        }
+
         const existingDistanceUnit = transaction?.comment?.customUnit?.distanceUnit;
         const routeDistanceMeters = transaction?.comment?.customUnit?.routeDistanceMeters;
         const quantity = transaction?.comment?.customUnit?.quantity;

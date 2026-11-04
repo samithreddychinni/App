@@ -8344,18 +8344,16 @@ function updatePolicyIdForReportAndThreads(
     const currentReport = allReports?.[reportKey];
     const originalPolicyID = currentReport?.policyID;
 
-    if (originalPolicyID) {
-        optimisticData.push({
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: reportKey,
-            value: {policyID},
-        });
-        failureData.push({
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: reportKey,
-            value: {policyID: originalPolicyID},
-        });
-    }
+    optimisticData.push({
+        onyxMethod: Onyx.METHOD.MERGE,
+        key: reportKey,
+        value: {policyID},
+    });
+    failureData.push({
+        onyxMethod: Onyx.METHOD.MERGE,
+        key: reportKey,
+        value: {policyID: originalPolicyID ?? null},
+    });
 
     // Recursively process child reports for the current report
     const childReportIDs = reportIDToThreadsReportIDsMap[currentReportID] || [];
