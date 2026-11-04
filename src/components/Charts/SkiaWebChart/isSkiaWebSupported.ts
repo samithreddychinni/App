@@ -24,6 +24,12 @@ function getProbeContext(): WebGL2RenderingContext | WebGLRenderingContext | nul
 
 function isSkiaWebSupported(): boolean {
     try {
+        // CanvasKit is a WebAssembly module. If WebAssembly is disabled or unavailable
+        // (e.g. Edge Enhanced Security Mode in strict mode), skip Skia to prevent ReferenceError.
+        if (typeof WebAssembly === 'undefined' || typeof WebAssembly.instantiate !== 'function') {
+            return false;
+        }
+
         const gl = getProbeContext();
         // The context CanvasKit needs can't be created, so it would throw `failed to create webgl context`.
         // Skip Skia; SkiaWebChart re-probes on the next mount, so a transient failure still recovers.

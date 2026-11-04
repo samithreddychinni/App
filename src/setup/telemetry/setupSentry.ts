@@ -64,6 +64,10 @@ function setupSentry(): void {
         ignoreErrors: [
             // UPDATE_REQUIRED is not a real error and makes our errors in Spotnana spike and get rate limited when we bump the app min version, so ignore it
             CONST.ERROR.UPDATE_REQUIRED,
+            // Environmental CanvasKit wasm fetch aborts (offline or proxy blocks) and missing WebAssembly that escape as unhandled rejections;
+            // legitimate chart failures are already captured as structured warnings in SkiaWebChart via logSkiaLoadError (see https://github.com/Expensify/App/issues/105709)
+            /both async and sync fetching of the wasm failed/,
+            /WebAssembly is not defined/,
             // Bare-string rejections from the Convert Experiments script in web/index.html, which reads OnyxDB directly.
             // They carry no stack frames for thirdPartyErrorFilterIntegration to tag; the prefix limits this to the
             // browser SDK's rejection wording, so a real Error carrying the same text still reports.
