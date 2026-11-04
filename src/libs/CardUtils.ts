@@ -158,6 +158,8 @@ type CardConnectionStatusDisplayParams = {
 
 const feedNamesMapping = {
     [CONST.COMPANY_CARD.FEED_BANK_NAME.CSV]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.CSV,
+    [CONST.COMPANY_CARD.FEED_BANK_NAME.CSV_CLASSIC]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.CSV,
+    [CONST.COMPANY_CARD.FEED_BANK_NAME.UPLOAD]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.CSV,
     [CONST.COMPANY_CARD.FEED_BANK_NAME.VCF_MOCK]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.MOCK_COMMERCIAL,
     [CONST.COMPANY_CARD.FEED_BANK_NAME.VISA]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.VISA,
     [CONST.COMPANY_CARD.FEED_BANK_NAME.MASTER_CARD]: CONST.COMPANY_CARDS.CARD_TYPE_NAMES.MASTERCARD,
@@ -1037,7 +1039,11 @@ function getBankName(feedType: CardFeedWithNumber | CardFeedWithDomainID): strin
     }
 
     let result: string;
-    if (feedType?.includes(CONST.COMPANY_CARD.FEED_BANK_NAME.CSV)) {
+    if (
+        feedType?.includes(CONST.COMPANY_CARD.FEED_BANK_NAME.CSV) ||
+        feedType?.includes(CONST.COMPANY_CARD.FEED_BANK_NAME.CSV_CLASSIC) ||
+        feedType?.includes(CONST.COMPANY_CARD.FEED_BANK_NAME.UPLOAD)
+    ) {
         result = CONST.COMPANY_CARDS.CARD_TYPE.CSV;
     } else {
         const feedKey = feedNamesMappingKeysByLength.find((feed) => feedType?.startsWith(feed));
@@ -1148,7 +1154,7 @@ function getCustomFeedNameFromFeeds(cardFeeds: OnyxCollection<CardFeeds> | undef
     }
 
     for (const feedData of Object.values(cardFeeds)) {
-        const nickname = feedData?.settings?.companyCardNicknames?.[feed];
+        const nickname = feedData?.settings?.companyCardNicknames?.[feed] ?? feedData?.settings?.companyCards?.[feed]?.uploadLayoutSettings?.layoutName;
         if (nickname) {
             return nickname;
         }

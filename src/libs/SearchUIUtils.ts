@@ -3494,11 +3494,19 @@ function getCardSections(
                 formattedCardName = formattedCardNameWithDotAndLastFour(formattedCardName, cardGroup.lastFourPAN);
             }
 
-            const card = cardList?.[cardGroup.cardID];
+            const card = cardList?.[cardGroup.cardID] ?? nonPersonalAndWorkspaceCardList?.[cardGroup.cardID];
             // A workspace/company card from a card feed can also lack a `fundID`, so `isPersonalCard` alone would misclassify it.
             // The non-personal card list keeps every company/workspace-feed card while filtering personal cards out, so presence
             // there means the card is definitively NOT personal.
             const isPersonal = !!card && isPersonalCard(card) && !nonPersonalAndWorkspaceCardList?.[cardGroup.cardID];
+            const customFeedName = card?.fundID
+                ? cardFeeds?.[`${ONYXKEYS.COLLECTION.SHARED_NVP_PRIVATE_DOMAIN_MEMBER}${card.fundID}`]?.settings?.companyCardNicknames?.[
+                      cardGroup.bank as OnyxTypes.CompanyCardFeed
+                  ] ??
+                  cardFeeds?.[`${ONYXKEYS.COLLECTION.SHARED_NVP_PRIVATE_DOMAIN_MEMBER}${card.fundID}`]?.settings?.companyCards?.[
+                      cardGroup.bank as OnyxTypes.CompanyCardFeed
+                  ]?.uploadLayoutSettings?.layoutName
+                : undefined;
             cardSections[key] = {
                 groupedBy: CONST.SEARCH.GROUP_BY.CARD,
                 transactions: [],
@@ -3512,11 +3520,7 @@ function getCardSections(
                           translate,
                           cardGroup.bank as OnyxTypes.CompanyCardFeed,
                           cardFeeds,
-                          card?.fundID
-                              ? cardFeeds?.[`${ONYXKEYS.COLLECTION.SHARED_NVP_PRIVATE_DOMAIN_MEMBER}${card.fundID}`]?.settings?.companyCardNicknames?.[
-                                    cardGroup.bank as OnyxTypes.CompanyCardFeed
-                                ]
-                              : undefined,
+                          customFeedName,
                           true,
                           cardGroup?.feedCountry,
                       ),

@@ -1605,6 +1605,14 @@ describe('CardUtils', () => {
         });
     });
 
+    describe('getBankName', () => {
+        it('Should return CSV card type for CSV_CLASSIC and UPLOAD feed types', () => {
+            expect(getBankName(CONST.COMPANY_CARD.FEED_BANK_NAME.CSV_CLASSIC)).toBe(CONST.COMPANY_CARDS.CARD_TYPE.CSV);
+            expect(getBankName(CONST.COMPANY_CARD.FEED_BANK_NAME.UPLOAD)).toBe(CONST.COMPANY_CARDS.CARD_TYPE.CSV);
+            expect(getBankName(CONST.COMPANY_CARD.FEED_BANK_NAME.CSV)).toBe(CONST.COMPANY_CARDS.CARD_TYPE.CSV);
+        });
+    });
+
     describe('getCustomFeedNameFromFeeds', () => {
         it('Should return custom feed name if it exists', () => {
             const feed = CONST.COMPANY_CARD.FEED_BANK_NAME.VISA;
@@ -1628,6 +1636,25 @@ describe('CardUtils', () => {
             const feed = CONST.COMPANY_CARD.FEED_BANK_NAME.VISA;
             const customName = getCustomFeedNameFromFeeds(undefined, feed);
             expect(customName).toBe(undefined);
+        });
+
+        it('Should return uploadLayoutSettings layoutName for CSV feed when nickname is not set', () => {
+            const feed = CONST.COMPANY_CARD.FEED_BANK_NAME.CSV_CLASSIC as CompanyCardFeed;
+            const feedsWithLayout = {
+                FAKE_ID: {
+                    settings: {
+                        companyCards: {
+                            [feed]: {
+                                uploadLayoutSettings: {
+                                    layoutName: 'CHASE VISA/SMC (Pete R)',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+            const customName = getCustomFeedNameFromFeeds(feedsWithLayout as unknown as OnyxCollection<CardFeeds>, feed);
+            expect(customName).toBe('CHASE VISA/SMC (Pete R)');
         });
     });
 

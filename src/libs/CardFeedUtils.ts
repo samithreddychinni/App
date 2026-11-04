@@ -260,7 +260,7 @@ function getCardFeedsForDisplay(
                 id,
                 feed,
                 fundID,
-                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed], false) ?? feed,
+                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed] ?? feedData?.settings?.uploadLayoutSettings?.layoutName, false) ?? feed,
                 subtitle: getCompanyFeedSubtitle(feedData, fundID, policies, domains),
             };
         }
@@ -390,7 +390,7 @@ function getCardFeedsForDisplayPerPolicy(
                 country,
                 fundID,
                 linkedPolicyIDs,
-                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed], false) ?? feed,
+                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed] ?? feedData?.settings?.uploadLayoutSettings?.layoutName, false) ?? feed,
             };
 
             const validLinkedPolicyIDs = linkedPolicyIDs?.filter(Boolean);
@@ -505,7 +505,7 @@ function getVisibleCompanyCardFeedsForSelector(
                 country,
                 fundID,
                 linkedPolicyIDs,
-                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed], false) ?? feed,
+                name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed] ?? feedData?.settings?.uploadLayoutSettings?.layoutName, false) ?? feed,
             });
         }
     }
