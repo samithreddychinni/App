@@ -277,3 +277,73 @@ describe('ValidateCodeInput production events', () => {
         expect(blur).toHaveBeenCalled();
     });
 });
+
+describe('Web magic-code capture navigation', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockFocused = true;
+        mockOffline = false;
+        const input = Object.assign(document.createElement('input'), {isFocused: () => mockFocused});
+        document.body.appendChild(input);
+        input.focus();
+        const inputMethods: Pick<BaseTextInputRef, 'focus' | 'blur'> = input;
+        mockInput = createMock<BaseTextInputRef>(inputMethods);
+    });
+    afterEach(() => {
+        cleanup();
+        document.body.replaceChildren();
+    });
+
+    it('consumes in-range Tab before the document focus trap, including key repeat', () => {
+        // Given one focused DOM input represents all six slots
+        const onChangeText = jest.fn();
+        render(
+            <ValidateCodeInput
+                autoComplete="one-time-code"
+                autoFocus
+                onChangeText={onChangeText}
+            />,
+        );
+        const trap = jest.fn();
+        document.addEventListener('keydown', trap, true);
+        const forward = new KeyboardEvent('keydown', {key: 'Tab', bubbles: true, cancelable: true});
+        const backward = new KeyboardEvent('keydown', {key: 'Tab', shiftKey: true, bubbles: true, cancelable: true});
+        // When two keys arrive before React can render, followed by one backward key
+        act(() => {
+            document.activeElement?.dispatchEvent(forward);
+            document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', {key: 'Tab', bubbles: true, cancelable: true}));
+            document.activeElement?.dispatchEvent(backward);
+        });
+        act(() => getCodeInputProps().onChangeText?.('7'));
+        // Then the resulting digit belongs to slot two and neither Tab reaches the trap
+        expect(forward.defaultPrevented).toBe(true);
+        expect(backward.defaultPrevented).toBe(true);
+        expect(trap).not.toHaveBeenCalled();
+        expect(onChangeText).toHaveBeenLastCalledWith(' 7    ');
+        document.removeEventListener('keydown', trap, true);
+    });
+
+    it('leaves boundary and modified Tabs to the browser and removes its listener', () => {
+        // Given the first slot is selected
+        const {unmount} = render(
+            <ValidateCodeInput
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={2}
+            />,
+        );
+        const dispatch = (shiftKey = false, ctrlKey = false) => {
+            const event = new KeyboardEvent('keydown', {key: 'Tab', shiftKey, ctrlKey, bubbles: true, cancelable: true});
+            act(() => document.activeElement?.dispatchEvent(event));
+            return event.defaultPrevented;
+        };
+        // When leaving either boundary, using a browser shortcut, or typing after unmount
+        expect(dispatch(true)).toBe(false);
+        expect(dispatch(false, true)).toBe(false);
+        expect(dispatch()).toBe(true);
+        expect(dispatch()).toBe(false);
+        unmount();
+        // Then detached inputs have no active navigation listener
+        expect(dispatch(true)).toBe(false);
+    });
+});

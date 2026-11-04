@@ -67,6 +67,32 @@ const useValidateCodePaste = (inputRef: React.RefObject<BaseTextInputRef | null>
 
 type AutoCompleteVariant = ValueOf<typeof CONST.AUTO_COMPLETE_VARIANTS>;
 
+const useValidateCodeTabNavigation = (inputRef: React.RefObject<BaseTextInputRef | null>, indexRef: React.RefObject<number>, maxLength: number, changeIndex: (index: number) => void) => {
+    useEffect(() => {
+        if (typeof document === 'undefined') {
+            return;
+        }
+        const moveWithinCode = (event: globalThis.KeyboardEvent) => {
+            if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey || !isTextInputFocused(inputRef)) {
+                return;
+            }
+            if (inputRef.current instanceof HTMLElement && document.activeElement !== inputRef.current) {
+                return;
+            }
+            const nextIndex = indexRef.current + (event.shiftKey ? -1 : 1);
+            if (nextIndex < 0 || nextIndex >= maxLength) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            changeIndex(nextIndex);
+        };
+        // focus-trap captures on document before React handles keys; window must consume moves within this single input first.
+        window.addEventListener('keydown', moveWithinCode, true);
+        return () => window.removeEventListener('keydown', moveWithinCode, true);
+    }, [inputRef, indexRef, maxLength, changeIndex]);
+};
+
 type ValidateCodeInputProps = {
     /** Name attribute for the input */
     name?: string;
@@ -337,6 +363,7 @@ function ValidateCodeInput({
     };
 
     useValidateCodePaste(inputRef, onChangeText);
+    useValidateCodeTabNavigation(inputRef, editIndex, maxLength, setInputAndIndex);
 
     /**
      * Handles logic related to certain key presses.
