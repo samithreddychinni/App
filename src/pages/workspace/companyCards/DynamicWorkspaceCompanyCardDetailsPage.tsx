@@ -33,6 +33,7 @@ import {
     getCardFeedTextColor,
     getCompanyCardCustomName,
     getCompanyCardFeed,
+    getCompanyCardLastSyncedText,
     getCompanyFeeds,
     getDefaultCardName,
     getDomainOrWorkspaceAccountID,
@@ -144,9 +145,11 @@ function DynamicWorkspaceCompanyCardDetailsPage({route}: DynamicWorkspaceCompany
     const isUsingNonProductionAPI = activeServer !== CONST.SERVER.PRODUCTION || CONFIG.IS_USING_LOCAL_WEB;
     const shouldShowBreakConnection = isMockBank && isUsingNonProductionAPI;
 
-    const lastScrape = card?.lastScrape
-        ? format(getLocalDateFromDatetime(card.lastScrape), CONST.DATE.FNS_DATE_TIME_FORMAT_STRING)
-        : translate('workspace.moreFeatures.companyCards.neverUpdated');
+    const lastSyncedText = getCompanyCardLastSyncedText(
+        card,
+        translate,
+        (datetime: string) => format(getLocalDateFromDatetime(datetime), CONST.DATE.FNS_DATE_TIME_FORMAT_STRING),
+    );
 
     const errorRowStyles = [styles.ph5, styles.mb3];
 
@@ -212,7 +215,7 @@ function DynamicWorkspaceCompanyCardDetailsPage({route}: DynamicWorkspaceCompany
                         </Text>
                     </View>
                     <Text style={[styles.textLabelSupporting, styles.textAlignCenter, styles.ph5, styles.mb3]}>
-                        {`${translate('workspace.moreFeatures.companyCards.lastUpdated')}: ${card?.isLoadingLastUpdated ? translate('workspace.moreFeatures.companyCards.updating') : lastScrape}`}
+                        {`${translate('workspace.moreFeatures.companyCards.lastUpdated')}: ${lastSyncedText}`}
                     </Text>
                     <OfflineWithFeedback
                         pendingAction={card?.pendingFields?.lastScrape}

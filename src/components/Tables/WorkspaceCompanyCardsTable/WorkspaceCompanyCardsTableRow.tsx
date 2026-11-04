@@ -41,6 +41,8 @@ type WorkspaceCompanyCardTableRowData = TableData &
 
         exportAccountTitle?: string;
         onDismissError?: () => void;
+        lastSyncedText?: string;
+        lastSyncedTooltip?: string;
     };
 
 type WorkspaceCompanyCardTableRowProps = {
@@ -197,6 +199,20 @@ function WorkspaceCompanyCardTableRow({
                                 canEdit={!!item.canEditName && !item.isCardDeleted}
                                 onSave={item.onRenameName}
                                 displayTextStyle={[styles.lh16, styles.optionDisplayName, styles.pre]}
+                            />
+                        </View>
+                    )}
+
+                    {!shouldUseNarrowTableLayout && (
+                        <View
+                            style={[styles.flex1, styles.mnw0, styles.justifyContentCenter]}
+                            {...getCellAccessibilityProps(isTableSemanticsEnabled)}
+                        >
+                            <TextWithTooltip
+                                shouldShowTooltip
+                                numberOfLines={1}
+                                text={item.lastSyncedText ?? ''}
+                                style={[styles.lh16, styles.optionDisplayName, styles.pre]}
                             />
                         </View>
                     )}

@@ -2588,7 +2588,28 @@ function getEffectiveFeedReimbursable(value: string | undefined): SelectableFeed
     return isSelectableFeedReimbursable(value) ? value : undefined;
 }
 
+/**
+ * Format the last synced timestamp for a company card, or return "Never" / "Updating..." / undefined.
+ */
+function getCompanyCardLastSyncedText(
+    card: Card | undefined,
+    translate: LocaleContextProps['translate'],
+    formatDateTime: (datetime: string) => string,
+): string | undefined {
+    if (!card) {
+        return undefined;
+    }
+    if (card.isLoadingLastUpdated) {
+        return translate('workspace.moreFeatures.companyCards.updating');
+    }
+    if (card.lastScrape) {
+        return formatDateTime(card.lastScrape);
+    }
+    return translate('workspace.moreFeatures.companyCards.neverUpdated');
+}
+
 export {
+    getCompanyCardLastSyncedText,
     getEffectiveFeedReimbursable,
     canResolveTransactionCard,
     getAssignedCardSortKey,

@@ -38,6 +38,7 @@ import {
     getCompanyCardDescription,
     getCompanyCardFeed,
     getCompanyCardFeedWithDomainIDForCard,
+    getCompanyCardLastSyncedText,
     getCompanyFeeds,
     getConnectionBankAccountsForReconciliation,
     getCSVFeedType,
@@ -1602,6 +1603,30 @@ describe('CardUtils', () => {
             const feed = CONST.EXPENSIFY_CARD.BANK;
             const exists = doesCardFeedExist(feed, {});
             expect(exists).toBe(true);
+        });
+    });
+
+    describe('getCompanyCardLastSyncedText', () => {
+        const mockFormat = (dt: string) => `Formatted: ${dt}`;
+        const mockTranslate = ((key: string) => key) as unknown as LocalizedTranslate;
+
+        it('Should return undefined when card is undefined', () => {
+            expect(getCompanyCardLastSyncedText(undefined, mockTranslate, mockFormat)).toBeUndefined();
+        });
+
+        it('Should return updating text when isLoadingLastUpdated is true', () => {
+            const card = {isLoadingLastUpdated: true} as unknown as Card;
+            expect(getCompanyCardLastSyncedText(card, mockTranslate, mockFormat)).toBe('workspace.moreFeatures.companyCards.updating');
+        });
+
+        it('Should return formatted date when lastScrape is present', () => {
+            const card = {lastScrape: '2026-11-04 12:00:00'} as unknown as Card;
+            expect(getCompanyCardLastSyncedText(card, mockTranslate, mockFormat)).toBe('Formatted: 2026-11-04 12:00:00');
+        });
+
+        it('Should return neverUpdated when card has no lastScrape', () => {
+            const card = {} as unknown as Card;
+            expect(getCompanyCardLastSyncedText(card, mockTranslate, mockFormat)).toBe('workspace.moreFeatures.companyCards.neverUpdated');
         });
     });
 
