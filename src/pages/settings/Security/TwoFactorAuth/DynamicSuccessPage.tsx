@@ -26,9 +26,9 @@ import SCREENS from '@src/SCREENS';
 import {hasCompletedGuidedSetupFlowSelector} from '@src/selectors/Onboarding';
 import isLoadingOnyxValue from '@src/types/utils/isLoadingOnyxValue';
 
-import {findFocusedRoute} from '@react-navigation/native';
+import {findFocusedRoute, usePreventRemove} from '@react-navigation/native';
 import {authTokenTypeSelector} from '@selectors/Session';
-import React from 'react';
+import React, {useRef} from 'react';
 
 import SuccessPageBase from './SuccessPageBase';
 
@@ -69,6 +69,14 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
 
     const is2FAEnabled = !!account?.requiresTwoFactorAuth;
 
+    const isDismissingRef = useRef(false);
+    const shouldPreventRemove = (isForcedSetupFlow || shouldReturnToOnboardingAfter2FA) && !isDismissingRef.current;
+
+    usePreventRemove(shouldPreventRemove, () => {
+        isDismissingRef.current = true;
+        goBack();
+    });
+
     const completeForcedOnboarding2FAHandoff = () => {
         clearTwoFactorAuthData(is2FAEnabled, true);
         const onboardingFlowParams = buildOnboardingFlowParams(account, onboardingValues, onboardingCompanySize, onboardingPurposeSelected, onboardingInitialPath);
@@ -88,6 +96,7 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
     };
 
     const goBack = () => {
+        isDismissingRef.current = true;
         if (shouldReturnToOnboardingAfter2FA) {
             completeForcedOnboarding2FAHandoff();
             return;
@@ -113,6 +122,7 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
     };
 
     const onButtonPress = () => {
+        isDismissingRef.current = true;
         if (CONFIG.IS_HYBRID_APP && isClassicRedirectDismissed && !isClassicRedirectBlocked) {
             closeReactNativeApp({shouldSetNVP: false, isTrackingGPS: false});
             return;
