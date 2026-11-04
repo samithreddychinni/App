@@ -133,6 +133,65 @@ describe('actions/IOU/PayMoneyRequest', () => {
         jest.clearAllMocks();
     });
 
+    it.each([false, true])('documents reconciliation when the pay response contains the waiting-bank status: %s', async (hasAuthoritativeStatus) => {
+        // Given the payer cannot inspect the recipient's private bank-account list
+        const chatReport = {...createRandomReport(0, undefined), reportID: 'payment-chat'};
+        const iouReport = {
+            ...createRandomReport(1, undefined),
+            reportID: 'payment-report',
+            isWaitingOnBankAccount: false,
+            parentReportID: chatReport.reportID,
+            chatType: undefined,
+            type: CONST.REPORT.TYPE.EXPENSE,
+            stateNum: CONST.REPORT.STATE_NUM.APPROVED,
+            statusNum: CONST.REPORT.STATUS_NUM.APPROVED,
+            total: -10000,
+        };
+        await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${chatReport.reportID}`, chatReport);
+        await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${iouReport.reportID}`, iouReport);
+        mockFetch.mockAPICommand(WRITE_COMMANDS.PAY_MONEY_REQUEST, () => ({
+            jsonCode: 200,
+            onyxData: hasAuthoritativeStatus
+                ? [
+                      {
+                          onyxMethod: Onyx.METHOD.MERGE,
+                          key: `${ONYXKEYS.COLLECTION.REPORT}${iouReport.reportID}`,
+                          value: {stateNum: CONST.REPORT.STATE_NUM.APPROVED, statusNum: CONST.REPORT.STATUS_NUM.APPROVED, isWaitingOnBankAccount: true},
+                      },
+                  ]
+                : [],
+        }));
+        // When a VBBA payment succeeds, with or without the authoritative server correction
+        payMoneyRequest({
+            bankAccountList: undefined,
+            isWiseReimbursementsBetaEnabled: false,
+            isASAPSubmitBetaEnabled: false,
+            conciergeChat: undefined,
+            paymentType: CONST.IOU.PAYMENT_TYPE.VBBA,
+            chatReport,
+            iouReport,
+            iouReportTransactions: [],
+            introSelected: undefined,
+            currentUserAccountID: CARLOS_ACCOUNT_ID,
+            currentUserLogin: CARLOS_EMAIL,
+            isSelfTourViewed: false,
+            userBillingGracePeriodEnds: undefined,
+            amountOwed: 0,
+            chatReportPolicy: undefined,
+            chatReportActions: undefined,
+            delegateAccountID: undefined,
+            isTrackIntentUser: false,
+            getCurrencyDecimals: getCurrencyDecimalsLocal,
+            rules: undefined,
+            shouldPlaySuccessSound: false,
+        });
+        await waitForBatchedUpdates();
+        // Then a complete server response corrects the optimistic status; omission demonstrates the stale Paid mechanism
+        const result = await getOnyxValue(`${ONYXKEYS.COLLECTION.REPORT}${iouReport.reportID}`);
+        expect(result?.statusNum).toBe(hasAuthoritativeStatus ? CONST.REPORT.STATUS_NUM.APPROVED : CONST.REPORT.STATUS_NUM.REIMBURSED);
+        expect(!!result?.isWaitingOnBankAccount).toBe(hasAuthoritativeStatus);
+    });
+
     describe('payMoneyRequestElsewhere', () => {
         it('clears outstanding IOUReport', () => {
             const amount = 10000;
@@ -1259,7 +1318,7 @@ describe('actions/IOU/PayMoneyRequest', () => {
                         transactionID: transaction.transactionID,
                         getCurrencyDecimals: getCurrencyDecimalsLocal,
                     });
-                    reportActions[action.reportActionID] = action as ReportAction;
+                    reportActions[action.reportActionID] = action;
                 }
 
                 await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${scanFailedPolicy.id}`, scanFailedPolicy);
