@@ -22,6 +22,7 @@ import {
     isPolicyAdmin as isPolicyAdminPolicyUtils,
     isPolicyApprover,
     isPreferredExporter,
+    shouldShowReimbursableExportDestinationAccountError,
     isSubmitAndClose,
     isSubmitPolicy,
     isSubmitterApproveBlockedOnSubmitWorkspace,
@@ -305,6 +306,10 @@ function isExportAction(report: Report, currentUserLogin: string, policy?: Polic
     const isInvoiceReport = isInvoiceReportUtils(report);
 
     if (!connectedIntegration || isInvoiceReport) {
+        return false;
+    }
+
+    if (shouldShowReimbursableExportDestinationAccountError(policy, [connectedIntegration])) {
         return false;
     }
 

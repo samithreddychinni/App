@@ -5,7 +5,7 @@ import Text from '@components/Text';
 import useLocalize from '@hooks/useLocalize';
 import useThemeStyles from '@hooks/useThemeStyles';
 
-import {clearRilletErrorField, updateRilletReimbursableExpensesExportDestination} from '@libs/actions/connections/Rillet';
+import {clearRilletErrorField, updateRilletReimbursableExpensesExportDestination, updateRilletReimbursementAccount} from '@libs/actions/connections/Rillet';
 import {getLatestErrorField} from '@libs/ErrorUtils';
 import Navigation from '@libs/Navigation/Navigation';
 import {settingsPendingAction} from '@libs/PolicyUtils';
@@ -48,6 +48,20 @@ function RilletReimbursablePage({policy}: WithPolicyConnectionsProps) {
     const selectReimbursableExpensesExportDestination = (item: ReimbursableExpensesExportDestinationListItem) => {
         if (item.value !== exportReimbursable && policyID) {
             updateRilletReimbursableExpensesExportDestination(policyID, item.value, exportReimbursable);
+            if (item.value === CONST.RILLET_EXPORT_REIMBURSABLE.REIMBURSEMENT && !rilletConfig?.export?.reimbursementAccountCode) {
+                const eligibleAccounts =
+                    policy?.connections?.rillet?.data?.accounts?.filter(
+                        (accountItem) =>
+                            accountItem.type === CONST.RILLET_ACCOUNT_TYPE.LIABILITY &&
+                            accountItem.subtype !== CONST.RILLET_ACCOUNT_SUBTYPE.CREDIT_CARD &&
+                            accountItem.subtype !== CONST.RILLET_ACCOUNT_SUBTYPE.ACCOUNTS_PAYABLE &&
+                            accountItem.subtype !== CONST.RILLET_ACCOUNT_SUBTYPE.OTHER_LONG_TERM_LIABILITY &&
+                            accountItem.status === CONST.RILLET_ACCOUNT_STATUS.ACTIVE,
+                    ) ?? [];
+                if (eligibleAccounts.length > 0) {
+                    updateRilletReimbursementAccount(policyID, eligibleAccounts.at(0)?.code);
+                }
+            }
         }
         Navigation.goBack(backPath);
     };

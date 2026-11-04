@@ -42,6 +42,7 @@ import {
     isSubmitAndClose,
     isSubmitPolicy,
     isSubmitterApproveBlockedOnSubmitWorkspace,
+    shouldShowReimbursableExportDestinationAccountError,
 } from './PolicyUtils';
 import {
     getAllReportActions,
@@ -557,8 +558,12 @@ function isExportAction(currentUserLogin: string, report: Report, policy?: Polic
         return false;
     }
 
-    const hasAccountingConnection = !!getValidConnectedIntegration(policy);
-    if (!hasAccountingConnection) {
+    const connectedIntegration = getValidConnectedIntegration(policy);
+    if (!connectedIntegration) {
+        return false;
+    }
+
+    if (shouldShowReimbursableExportDestinationAccountError(policy, [connectedIntegration])) {
         return false;
     }
 
