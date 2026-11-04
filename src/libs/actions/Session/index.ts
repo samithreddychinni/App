@@ -97,7 +97,7 @@ import updateSessionAuthTokens from './updateSessionAuthTokens';
 const INVALID_TOKEN = 'pizza';
 
 let deprecatedSession: Session = {};
-let authPromiseResolver: ((value: boolean) => void) | null = null;
+const authPromiseResolvers = new Set<(value: boolean) => void>();
 
 let isHybridAppSetupFinished = false;
 let hasSwitchedAccountInHybridMode = false;
@@ -110,9 +110,9 @@ Onyx.connect({
         if (!deprecatedSession.creationDate) {
             deprecatedSession.creationDate = new Date().getTime();
         }
-        if (deprecatedSession.authToken && authPromiseResolver) {
-            authPromiseResolver(true);
-            authPromiseResolver = null;
+        if (deprecatedSession.authToken && authPromiseResolvers.size > 0) {
+            authPromiseResolvers.forEach((resolve) => resolve(true));
+            authPromiseResolvers.clear();
         }
         if (CONFIG.IS_HYBRID_APP && isHybridAppSetupFinished && deprecatedSession.authToken && !isAnonymousUser(value)) {
             HybridAppModule.sendAuthToken({authToken: deprecatedSession.authToken});
@@ -1659,7 +1659,7 @@ function waitForUserSignIn(): Promise<boolean> {
         if (deprecatedSession.authToken) {
             resolve(true);
         } else {
-            authPromiseResolver = resolve;
+            authPromiseResolvers.add(resolve);
         }
     });
 }
