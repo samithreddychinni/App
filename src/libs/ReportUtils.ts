@@ -2115,12 +2115,13 @@ function isOpenOrProcessingReport(report: OnyxEntry<Report>): boolean {
 }
 
 // Instant submit shows Fix until the first approval. A forward leaves the report submitted, so that still counts as approved.
-// Every other workspace only shows Fix on a draft.
+// For standard workspaces, processing reports with submitter-fixable violations (such as missing required category)
+// also remain eligible for fix until approved/forwarded.
 function isReportEligibleForViolationFix(report: OnyxEntry<Report>, policy: OnyxEntry<Policy>, hasBeenForwardedSinceLastSubmit?: boolean): boolean {
     if (isInstantSubmitEnabled(policy)) {
         return isOpenOrProcessingReport(report) && !(hasBeenForwardedSinceLastSubmit ?? hasReportBeenForwardedSinceLastSubmit(report));
     }
-    return isOpenReport(report);
+    return isOpenOrProcessingReport(report) && !(hasBeenForwardedSinceLastSubmit ?? hasReportBeenForwardedSinceLastSubmit(report));
 }
 
 // Violations the submitter can no longer fix once a report is submitted. Inbox and Home both use this list.
