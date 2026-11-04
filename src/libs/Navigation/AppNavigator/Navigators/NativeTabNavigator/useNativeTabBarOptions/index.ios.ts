@@ -1,5 +1,6 @@
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useTheme from '@hooks/useTheme';
+import useThemeStyles from '@hooks/useThemeStyles';
 import useWindowDimensions from '@hooks/useWindowDimensions';
 
 import type {NativeTabName} from '@libs/Navigation/AppNavigator/Navigators/NativeTabNavigator/NATIVE_TAB_GLYPHS';
@@ -10,6 +11,8 @@ import {fontScale} from '@styles/typography';
 import variables from '@styles/variables';
 
 import type {NativeBottomTabNavigationOptions} from '@react-navigation/bottom-tabs/unstable';
+
+import {Platform} from 'react-native';
 
 import type NativeTabBarOptionsParams from './types';
 
@@ -35,7 +38,10 @@ const LANDSCAPE_TAB_ICON_LAYOUT: TabIconLayout = {
  * selection states are images, because RNScreens rejects a tab whose icon and selectedIcon differ in type.
  */
 function useNativeTabBarOptions({shouldShowNativeTabBar, dotColors, tabLabels}: NativeTabBarOptionsParams) {
+    // Classic UIKit scales a wide image into its compact landscape icon slot; only iOS 26 needs baked labels.
+    const shouldDrawLabelsInIcons = parseInt(String(Platform.Version), 10) >= 26;
     const theme = useTheme();
+    const styles = useThemeStyles();
     const {windowWidth} = useWindowDimensions();
     const {isInLandscapeMode} = useResponsiveLayout();
     const tabIconLayout = isInLandscapeMode ? LANDSCAPE_TAB_ICON_LAYOUT : TAB_ICON_LAYOUT;
@@ -47,8 +53,9 @@ function useNativeTabBarOptions({shouldShowNativeTabBar, dotColors, tabLabels}: 
     const screenOptions: NativeBottomTabNavigationOptions = {
         // The labels are drawn into the icons.
         tabBarLabel: '',
-        tabBarActiveTintColor: theme.iconMenu,
-        tabBarInactiveTintColor: theme.icon,
+        tabBarLabelStyle: shouldDrawLabelsInIcons ? undefined : {fontFamily: styles.textSmall.fontFamily, fontSize: styles.textSmall.fontSize},
+        tabBarActiveTintColor: shouldDrawLabelsInIcons ? theme.iconMenu : theme.text,
+        tabBarInactiveTintColor: shouldDrawLabelsInIcons ? theme.icon : theme.textSupporting,
         // Every tab shares one style, so the bar reads the current visibility in the same render that changed it.
         // The background only lands on iOS 18 and below; iOS 26 keeps its own glass material.
         tabBarStyle: {display: shouldShowNativeTabBar ? 'flex' : 'none', backgroundColor: theme.appBG},
@@ -58,18 +65,21 @@ function useNativeTabBarOptions({shouldShowNativeTabBar, dotColors, tabLabels}: 
     };
 
     const getTabOptions = (name: NativeTabName): NativeBottomTabNavigationOptions => ({
+        tabBarLabel: shouldDrawLabelsInIcons ? '' : tabLabels[name],
         tabBarIcon: getTabBarIcon(tabIconLayout, (isSelected) => ({
             name,
             color: isSelected ? theme.iconMenu : theme.icon,
             dotColor: dotColors[name],
-            label: {
-                text: tabLabels[name],
-                color: isSelected ? theme.text : theme.textSupporting,
-                isBold: isSelected,
-                fontSize: fontScale.micro,
-                gap: variables.nativeTabIconLabelGap,
-                maxWidth: labelMaxWidth,
-            },
+            label: shouldDrawLabelsInIcons
+                ? {
+                      text: tabLabels[name],
+                      color: isSelected ? theme.text : theme.textSupporting,
+                      isBold: isSelected,
+                      fontSize: fontScale.micro,
+                      gap: variables.nativeTabIconLabelGap,
+                      maxWidth: labelMaxWidth,
+                  }
+                : undefined,
         })),
         // The label is drawn into the icon, so VoiceOver reads it from here.
         tabBarAccessibilityLabel: tabLabels[name],
