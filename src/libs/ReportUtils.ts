@@ -2706,6 +2706,12 @@ function findLastAccessedReport(
             return false;
         }
 
+        // A report that returned a not-found error is inaccessible to the current user.
+        // Opening it automatically only lands on the "Hmm… it's not here" page.
+        if (report?.errorFields?.notFound) {
+            return false;
+        }
+
         // We allow public announce rooms, admins, and announce rooms through since we bypass the default rooms beta for them.
         // Domain rooms are now the only type of default room that are on the defaultRooms beta.
         // When guideAccountIDs is undefined, hasExpensifyGuidesEmails falls back to the personal details store (https://github.com/Expensify/App/issues/66413)
