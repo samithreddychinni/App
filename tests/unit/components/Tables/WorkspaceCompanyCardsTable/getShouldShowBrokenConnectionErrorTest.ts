@@ -47,12 +47,12 @@ describe('getShouldShowBrokenConnectionError', () => {
         expect(getShouldShowBrokenConnectionError(CSV_FEED, feedErrors)).toBe(false);
     });
 
-    // A 434 card is left out of `isFeedConnectionBroken`, but the wallet still sends its holder here to fix it, so
-    // the page has to offer the fix.
-    it('shows the error for a direct feed whose only issue is an actionable scrape status', () => {
-        const feedErrors = buildFeedErrors({hasFeedConnectionIssue: true});
+    // A 434 card ("Account not found") is excluded from feed-level warnings so other healthy cards
+    // continue syncing. It identifies the affected card individually without labeling the entire feed as broken.
+    it('does not show the feed-level error for a direct feed whose only issue is an actionable scrape status (e.g. 434)', () => {
+        const feedErrors = buildFeedErrors({hasFeedConnectionIssue: true, isFeedConnectionBroken: false});
 
-        expect(getShouldShowBrokenConnectionError(DIRECT_FEED, feedErrors)).toBe(true);
+        expect(getShouldShowBrokenConnectionError(DIRECT_FEED, feedErrors)).toBe(false);
     });
 
     it('does not show the error for a commercial feed whose only issue is an actionable scrape status', () => {

@@ -8,12 +8,11 @@ import type {CardFeedErrorState} from '@src/types/onyx/DerivedValues';
  *
  * A broken card-level scrape connection can only be fixed by logging into a bank on direct
  * OAuth/Plaid feeds, so commercial and other file-based feeds don't surface that error unless
- * the feed itself has errors. `hasFeedConnectionIssue` covers the statuses `isFeedConnectionBroken`
- * ignores, such as 434, because the wallet sends those cards here to be fixed.
+ * the feed itself has errors. Card-level issues such as 434 ("Account not found") identify the
+ * affected card individually without labeling the entire feed as broken.
  */
 function getShouldShowBrokenConnectionError(feedName: CompanyCardFeedWithDomainID, feedErrors: CardFeedErrorState | undefined): boolean {
-    const hasConnectionToFix = !!feedErrors?.isFeedConnectionBroken || !!feedErrors?.hasFeedConnectionIssue;
-    return (hasConnectionToFix && isDirectFeed(feedName)) || !!feedErrors?.hasFeedErrors;
+    return (!!feedErrors?.isFeedConnectionBroken && isDirectFeed(feedName)) || !!feedErrors?.hasFeedErrors;
 }
 
 export default getShouldShowBrokenConnectionError;
