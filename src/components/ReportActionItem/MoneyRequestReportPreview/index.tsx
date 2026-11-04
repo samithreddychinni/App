@@ -171,7 +171,8 @@ function MoneyRequestReportPreview({
     };
 
     const openReportFromPreview = () => {
-        if (!iouReportID || contextMenuRef.current?.isContextMenuOpening) {
+        const contextMenu = contextMenuRef.current;
+        if (!iouReportID || contextMenu?.isContextMenuOpening) {
             return;
         }
 
@@ -330,7 +331,8 @@ function MoneyRequestReportPreview({
     };
 
     const openTransactionFromPreview = (transaction: Transaction) => {
-        if (contextMenuRef.current?.isContextMenuOpening) {
+        const contextMenu = contextMenuRef.current;
+        if (contextMenu?.isContextMenuOpening) {
             return;
         }
 
