@@ -129,7 +129,7 @@ describe('WorkspaceOwnerRestrictedAction', () => {
         // When the owner taps "Add payment card"
         fireEvent.press(screen.getByText('workspace.restrictedAction.addPaymentCard'));
 
-        // Then the modal closes first, and the card form opens over the report so closing it returns there
+        // Then the modal closes first, and the card form opens over the Subscription page
         expect(Navigation.dismissModal).toHaveBeenCalledTimes(1);
         expect(Navigation.navigate).not.toHaveBeenCalled();
 
@@ -139,7 +139,7 @@ describe('WorkspaceOwnerRestrictedAction', () => {
         afterTransition?.();
 
         expect(Navigation.navigate).toHaveBeenCalledTimes(1);
-        expect(Navigation.navigate).toHaveBeenCalledWith('r/123/add-payment-card');
+        expect(Navigation.navigate).toHaveBeenCalledWith('settings/subscription/add-payment-card');
     });
 
     it('navigates to subscription without closing the RHP so swiping back returns to the restricted screen', () => {
