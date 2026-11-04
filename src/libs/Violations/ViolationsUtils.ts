@@ -25,6 +25,7 @@ import {
 } from '@libs/PolicyUtils';
 import {isCurrentUserSubmitter} from '@libs/ReportUtils';
 import {isRuleFilterNode} from '@libs/RuleUtils';
+import {hasMatchingTag} from '@libs/TagsOptionsListUtils';
 import * as TransactionUtils from '@libs/TransactionUtils';
 import {hasValidModifiedAmount, isViolationDismissed, shouldShowViolation} from '@libs/TransactionUtils';
 
@@ -575,8 +576,7 @@ function getIsViolationFixed(violationError: string, params: ViolationFixParams)
             if (!hasAnyEnabledTags) {
                 return true;
             }
-            const hasMatchingTag = Object.values(policyTagLists).some((tagList) => !!tagList.tags?.[tag]?.enabled);
-            return hasMatchingTag;
+            return hasMatchingTag(policyTagLists, tag);
         },
         [`${CONST.VIOLATIONS_PREFIX}${CONST.VIOLATIONS.TAX_OUT_OF_POLICY}`]: () => {
             if (!taxCode || !policyTaxRates) {

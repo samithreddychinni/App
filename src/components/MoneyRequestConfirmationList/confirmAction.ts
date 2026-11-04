@@ -89,15 +89,16 @@ function buildConfirmAction({
             return;
         }
 
+        if (formError) {
+            setFormError('');
+        }
+
         if (iouType === CONST.IOU.TYPE.INVOICE && !hasInvoicingDetails(policy) && transactionID && !routeError) {
             Navigation.navigate(createDynamicRoute(DYNAMIC_ROUTES.MONEY_REQUEST_STEP_COMPANY_INFO.path));
             return;
         }
 
         if (iouType !== CONST.IOU.TYPE.PAY) {
-            if (formError) {
-                return;
-            }
             onConfirm?.();
             return;
         }
@@ -108,9 +109,6 @@ function buildConfirmAction({
         }
         if (isDelegateAccessRestricted) {
             showDelegateNoAccessModal();
-            return;
-        }
-        if (formError) {
             return;
         }
         Log.info(`[IOU] Sending money via: ${paymentMethod}`);
