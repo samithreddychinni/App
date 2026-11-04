@@ -74,6 +74,23 @@ describe('convertHeicImage (native)', () => {
         expect(onSuccess).not.toHaveBeenCalled();
     });
 
+    it('reports an error when renderAsync returns undefined', async () => {
+        mockRenderAsync.mockResolvedValueOnce(undefined);
+        const onSuccess = jest.fn();
+        const onError = jest.fn();
+        const onFinish = jest.fn();
+
+        convertHeicImage(heicFile, {onSuccess, onError, onFinish});
+        await jest.runAllTimersAsync();
+
+        expect(onError).toHaveBeenCalledWith(
+            expect.objectContaining({message: 'Image manipulation failed: renderAsync returned undefined'}),
+            heicFile,
+        );
+        expect(onFinish).toHaveBeenCalledTimes(1);
+        expect(onSuccess).not.toHaveBeenCalled();
+    });
+
     it('passes non-HEIC files straight through without conversion', async () => {
         const onSuccess = jest.fn();
         const jpegFile = {uri: 'file:///photo.jpg', name: 'photo.jpg', type: 'image/jpeg', size: 1024};

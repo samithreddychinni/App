@@ -38,7 +38,10 @@ const sortFilesByOriginalOrder = (files: FileObject[], orderMap: Map<string, num
 
 const isImageFile = (file: FileObject) => !!hasHeicOrHeifExtension(file) || Str.isImage(file.name ?? '');
 
-function useFilesValidation(onFilesValidated: (files: FileObject[], dataTransferItems: DataTransferItem[]) => void) {
+function useFilesValidation(
+    onFilesValidated: (files: FileObject[], dataTransferItems: DataTransferItem[]) => void,
+    onValidationError?: (firstError: FileValidationError, allErrors: FileValidationError[]) => void,
+) {
     const styles = useThemeStyles();
     const {translate} = useLocalize();
     const {showConfirmModal} = useConfirmModal();
@@ -226,6 +229,11 @@ function useFilesValidation(onFilesValidated: (files: FileObject[], dataTransfer
             const uniqueErrors = deduplicateErrors(collectedErrors.current);
             const firstError = uniqueErrors.at(0);
             if (firstError) {
+                if (onValidationError) {
+                    onValidationError(firstError, uniqueErrors);
+                    reset();
+                    return;
+                }
                 showErrorModal(firstError, 0, uniqueErrors);
             }
         } else if (validFiles.current.length > 0) {
@@ -390,6 +398,11 @@ function useFilesValidation(onFilesValidated: (files: FileObject[], dataTransfer
                 const uniqueErrors = deduplicateErrors(collectedErrors.current);
                 const firstError = uniqueErrors.at(0);
                 if (firstError) {
+                    if (onValidationError) {
+                        onValidationError(firstError, uniqueErrors);
+                        reset();
+                        return;
+                    }
                     showErrorModal(firstError, 0, uniqueErrors);
                 }
             } else if (validNonPdfFiles.length > 0) {
@@ -449,6 +462,11 @@ function useFilesValidation(onFilesValidated: (files: FileObject[], dataTransfer
                 error: CONST.FILE_VALIDATION_ERRORS.MAX_FILE_LIMIT_EXCEEDED,
                 isValidatingMultipleFiles: validationState.isValidatingMultipleFiles,
             };
+            if (onValidationError) {
+                onValidationError(error, [error]);
+                reset();
+                return;
+            }
             showErrorModal(error, 0, [error]);
         } else {
             validateAndResizeFiles(files, items ?? [], validationState);

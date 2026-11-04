@@ -10,7 +10,7 @@ import useThemeStyles from '@hooks/useThemeStyles';
 
 import {addTempShareFile, addValidatedShareFile, clearShareData} from '@libs/actions/Share';
 import {canUseTouchScreen} from '@libs/DeviceCapabilities';
-import {splitExtensionFromFileName, validateImageForCorruption} from '@libs/fileDownload/FileUtils';
+import {getFileValidationErrorText, splitExtensionFromFileName, validateImageForCorruption} from '@libs/fileDownload/FileUtils';
 import Log from '@libs/Log';
 import Navigation from '@libs/Navigation/Navigation';
 import OnyxTabNavigator, {TopTab} from '@libs/Navigation/OnyxTabNavigator';
@@ -45,9 +45,13 @@ function showErrorAlert(title: string, message: string) {
 }
 
 function ShareRootPage() {
+    const {translate} = useLocalize();
     const [currentAttachment] = useOnyx(ONYXKEYS.SHARE_TEMP_FILE);
 
-    const {validateFiles} = useFilesValidation(addValidatedShareFile);
+    const {validateFiles} = useFilesValidation(addValidatedShareFile, (error) => {
+        const fileValidationErrorText = getFileValidationErrorText(translate, error, {isValidatingReceipt: false});
+        showErrorAlert(fileValidationErrorText.title, fileValidationErrorText.reason);
+    });
     const isTextShared = currentAttachment?.mimeType === 'txt';
 
     const validateFileIfNecessary = (file: ShareTempFile) => {
@@ -80,7 +84,6 @@ function ShareRootPage() {
     const [isFileReady, setIsFileReady] = useState(false);
 
     const styles = useThemeStyles();
-    const {translate} = useLocalize();
     const [isFileScannable, setIsFileScannable] = useState(false);
     const receiptFileFormats = Object.values(CONST.RECEIPT_ALLOWED_FILE_TYPES) as string[];
     const shareFileMimeTypes = Object.values(CONST.SHARE_FILE_MIMETYPE) as string[];

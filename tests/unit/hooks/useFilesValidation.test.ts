@@ -235,6 +235,24 @@ describe('useFilesValidation', () => {
             triggerValidation(result, [nextFile]);
             await waitFor(() => expect(onFilesValidated).toHaveBeenCalledWith([nextFile], []));
         });
+
+        it('calls onValidationError callback and skips showConfirmModal when provided', async () => {
+            const invalidFile = createFile({uri: 'file-invalid'});
+            mockInvalid(CONST.FILE_VALIDATION_ERRORS.WRONG_FILE_TYPE);
+            const onFilesValidated = jest.fn();
+            const onValidationError = jest.fn();
+
+            const {result} = renderHook(() => useFilesValidation(onFilesValidated, onValidationError));
+            triggerValidation(result, [invalidFile]);
+
+            await waitFor(() => expect(onValidationError).toHaveBeenCalledTimes(1));
+            expect(onValidationError).toHaveBeenCalledWith(
+                expect.objectContaining({error: CONST.FILE_VALIDATION_ERRORS.WRONG_FILE_TYPE}),
+                expect.any(Array),
+            );
+            expect(mockShowConfirmModal).not.toHaveBeenCalled();
+            expect(onFilesValidated).not.toHaveBeenCalled();
+        });
     });
 
     describe('multiple sequential error modals', () => {

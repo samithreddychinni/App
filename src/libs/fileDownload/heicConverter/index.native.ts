@@ -30,6 +30,9 @@ const convertImageWithManipulator = async (
 ) => {
     try {
         const manipulatedImage = await ImageManipulator.manipulate(sourceUri).renderAsync();
+        if (!manipulatedImage) {
+            throw new Error('Image manipulation failed: renderAsync returned undefined');
+        }
         const manipulationResult = await manipulatedImage.saveAsync({format: SaveFormat.JPEG});
         // A JPEG made from a 25-75 MB DNG is a fraction of its size, so the upload size limits need the JPEG's own size.
         const {size} = await ReactNativeBlobUtil.fs.stat(fileURIToPath(manipulationResult.uri));
