@@ -1,0 +1,25 @@
+// cspell:ignore println
+// Run with the Android project after its HybridApp dependency graph is configured.
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.findProject(':app')
+    assert app != null : 'No Android app project was configured'
+    app.tasks.register('verifyResolvedOkHttpSecurityUpdate') {
+        doLast {
+            // Given declarations and wildcard ranges do not establish the selected native runtime version
+            def configuration = app.configurations.getByName('productionReleaseRuntimeClasspath')
+            // When Gradle resolves the actual production runtime, resolution failures must fail this check too
+            def artifacts = configuration.resolvedConfiguration.resolvedArtifacts.findAll {
+                it.moduleVersion.id.group == 'com.squareup.okhttp3'
+            }
+            assert !artifacts.empty : 'No OkHttp artifacts were resolved'
+            // Then every OkHttp artifact must use a release with the known certificate blocking fix
+            artifacts.each {
+                def version = it.moduleVersion.id.version
+                def parts = version.tokenize('.').collect { part -> part.isInteger() ? part.toInteger() : -1 }
+                assert parts.size() == 3 && (parts[0] == 4 && (parts[1] > 12 || parts[1] == 12 && parts[2] >= 1) || parts[0] == 5 && (parts[1] > 5 || parts[1] == 5 && parts[2] >= 1)) : "Unverified OkHttp release: ${it.moduleVersion.id}"
+                println "Verified ${it.moduleVersion.id}"
+            }
+            assert artifacts.collect { it.moduleVersion.id.version }.unique().size() == 1 : 'OkHttp artifact versions are not aligned'
+        }
+    }
+}
