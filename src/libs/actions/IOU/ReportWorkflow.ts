@@ -42,6 +42,7 @@ import {
     getUnheldReimbursableTotal,
     hasHeldExpenses as hasHeldExpensesReportUtils,
     hasOutstandingChildRequest,
+    isOpenReport,
 } from '@libs/ReportUtils';
 import playSound, {SOUNDS} from '@libs/Sound';
 import {shouldRestrictUserBillableActions} from '@libs/SubscriptionUtils';
@@ -1018,6 +1019,11 @@ function submitReport({
     getCurrencyDecimals,
 }: SubmitReportFunctionParams) {
     if (!expenseReport) {
+        return;
+    }
+
+    const currentReport = getReportOrDraftReport({reportID: expenseReport.reportID}) ?? expenseReport;
+    if (!isOpenReport(currentReport)) {
         return;
     }
     if (expenseReport.policyID && shouldRestrictUserBillableActions(policy, ownerBillingGracePeriodEnd, userBillingGracePeriodEnds, amountOwed, currentUserAccountIDParam)) {
