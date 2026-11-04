@@ -3437,7 +3437,8 @@ function canApproveIOU(
     }
     const isReportPayAtEnd = isPayAtEndExpenseReport(iouReport ?? undefined, reportTransactions);
     const isReportClosed = isClosedReport(iouReport);
-    return reportTransactions.length > 0 && isCurrentUserManager && !isReportOpen && !isApproved && !iouSettled && !isReportPayAtEnd && !isReportClosed;
+    const isForwarded = hasReportBeenForwardedSinceLastSubmit(iouReport);
+    return reportTransactions.length > 0 && isCurrentUserManager && !isForwarded && !isReportOpen && !isApproved && !iouSettled && !isReportPayAtEnd && !isReportClosed;
 }
 
 function canIOUBePaid(
