@@ -46,7 +46,7 @@ import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import {DYNAMIC_ROUTES} from '@src/ROUTES';
 import type {ExpenseRuleForm, FlagForReviewRuleForm, MerchantRuleForm, MerchantTypeRuleForm, RequireFieldsRuleForm, SpendRuleForm} from '@src/types/form';
-import type {AppReview, Beta, BlockedFromConcierge, CustomStatusDraft, ExpenseRule, NewLogin, ReportAttributesDerivedValue, Session} from '@src/types/onyx';
+import type {AppReview, Beta, BlockedFromConcierge, CustomStatusDraft, ExpenseRule, NewLogin, Policy, ReportAttributesDerivedValue, Session} from '@src/types/onyx';
 import type Login from '@src/types/onyx/Login';
 import type {Errors} from '@src/types/onyx/OnyxCommon';
 import type {AnyOnyxServerUpdate, OnyxServerUpdate} from '@src/types/onyx/OnyxUpdatesFromServer';
@@ -92,6 +92,14 @@ Onyx.connectWithoutView({
     key: ONYXKEYS.ONYX_UPDATES_LAST_UPDATE_ID_APPLIED_TO_CLIENT,
     callback: (value) => {
         lastUpdateIDAppliedToClient = value;
+    },
+});
+
+let allPolicies: OnyxCollection<Policy>;
+Onyx.connectWithoutView({
+    key: ONYXKEYS.COLLECTION.POLICY,
+    callback: (value) => {
+        allPolicies = value;
     },
 });
 
@@ -1126,8 +1134,48 @@ function setContactMethodAsDefault(
         },
     ];
 
+    const oldDefaultContactMethod = currentUserPersonalDetails.login;
+    const policyUpdates: Array<OnyxUpdate<`${typeof ONYXKEYS.COLLECTION.POLICY}${string}`>> = [];
+
+    Object.values(allPolicies ?? {}).forEach((policy) => {
+        if (!policy) {
+            return;
+        }
+
+        let policyDataValue: Partial<Policy> | undefined;
+
+        if (policy.employeeList && oldDefaultContactMethod && policy.employeeList[oldDefaultContactMethod]) {
+            const currentEmployee = policy.employeeList[oldDefaultContactMethod];
+            policyDataValue = {
+                employeeList: {
+                    [oldDefaultContactMethod]: null,
+                    [newDefaultContactMethod]: currentEmployee,
+                },
+            };
+        }
+
+        if (policy.ownerAccountID === currentUserPersonalDetails.accountID || (oldDefaultContactMethod && policy.owner === oldDefaultContactMethod)) {
+            policyDataValue = {
+                ...policyDataValue,
+                owner: newDefaultContactMethod,
+            };
+        }
+
+        if (policyDataValue) {
+            policyUpdates.push({
+                onyxMethod: Onyx.METHOD.MERGE,
+                key: `${ONYXKEYS.COLLECTION.POLICY}${policy.id}`,
+                value: policyDataValue,
+            });
+        }
+    });
+
     // Pattern C: apply all actual data changes only after server confirms success
-    const successData: Array<OnyxUpdate<typeof ONYXKEYS.ACCOUNT | typeof ONYXKEYS.SESSION | typeof ONYXKEYS.LOGINS> | PersonalDetailsUtils.PersonalDetailsOnyxUpdate> = [
+    const successData: Array<
+        | OnyxUpdate<typeof ONYXKEYS.ACCOUNT | typeof ONYXKEYS.SESSION | typeof ONYXKEYS.LOGINS>
+        | OnyxUpdate<`${typeof ONYXKEYS.COLLECTION.POLICY}${string}`>
+        | PersonalDetailsUtils.PersonalDetailsOnyxUpdate
+    > = [
         {
             onyxMethod: Onyx.METHOD.MERGE,
             key: ONYXKEYS.ACCOUNT,
@@ -1159,6 +1207,7 @@ function setContactMethodAsDefault(
                 displayName: PersonalDetailsUtils.createDisplayName(newDefaultContactMethod, currentUserPersonalDetails, formatPhoneNumber),
             },
         }),
+        ...policyUpdates,
     ];
 
     const failureData: Array<OnyxUpdate<typeof ONYXKEYS.LOGINS>> = [
