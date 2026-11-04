@@ -623,7 +623,7 @@ function removeApprovalWorkflowRules(approvalWorkflow: ApprovalWorkflow, policy:
 
     // Members no rule covers still join a rule-backed default workflow through its rules, since the backend rejects
     // `employeeList` routing changes once a policy's approvals are rule-based.
-    if (isEmptyObject(removeDiff) && !hasRuleBasedDefaultWorkflow(existingRules)) {
+    if (isEmptyObject(removeDiff) && isEmptyObject(existingRules)) {
         return false;
     }
 
