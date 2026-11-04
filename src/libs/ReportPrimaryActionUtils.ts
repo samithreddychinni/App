@@ -64,11 +64,11 @@ import {
 } from './ReportUtils';
 import {
     allHavePendingRTERViolation,
+    hasOnlyUnsettledOrPendingExpenses,
     getTransactionViolations,
     hasPendingRTERViolation as hasPendingRTERViolationTransactionUtils,
     isDuplicate,
     isOnHold as isOnHoldTransactionUtils,
-    isPending,
     isScanning,
     isTransactionSubmittable,
     shouldShowBrokenConnectionViolationForMultipleTransactions,
@@ -218,7 +218,7 @@ function isApproveAction(report: Report, reportTransactions: Transaction[], curr
         return false;
     }
 
-    return !reportTransactions.every((transaction) => isPending(transaction));
+    return !hasOnlyUnsettledOrPendingExpenses(reportTransactions, report);
 }
 
 function isPrimaryPayAction({

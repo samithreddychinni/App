@@ -39,7 +39,7 @@ import {
     isReportApproved,
     isSettled,
 } from './ReportUtils';
-import {hasOnlyPendingCardTransactions, hasSmartScanFailedWithMissingFields, hasSubmissionBlockingViolations, isPending, isScanning} from './TransactionUtils';
+import {hasOnlyUnsettledOrPendingExpenses, hasOnlyPendingCardTransactions, hasSmartScanFailedWithMissingFields, hasSubmissionBlockingViolations, isScanning} from './TransactionUtils';
 
 function canSubmit(
     report: Report,
@@ -107,7 +107,7 @@ function canApprove(report: Report, currentUserAccountID: number, reportMetadata
         return false;
     }
 
-    if (transactions.length > 0 && transactions.every((transaction) => isPending(transaction))) {
+    if (hasOnlyUnsettledOrPendingExpenses(transactions, report)) {
         return false;
     }
 

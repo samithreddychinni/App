@@ -95,6 +95,7 @@ import {
 } from './ReportUtils';
 import {
     allHavePendingRTERViolation,
+    hasOnlyUnsettledOrPendingExpenses,
     getOriginalTransactionWithSplitInfo,
     hasOnlyPendingCardTransactions,
     hasReceipt as hasReceiptTransactionUtils,
@@ -356,6 +357,10 @@ function isApproveAction(
     if (isPreventSelfApprovalEnabled && isReportSubmitter) {
         return false;
     }
+    if (hasOnlyUnsettledOrPendingExpenses(reportTransactions, report)) {
+        return false;
+    }
+
     const isExpenseReport = isExpenseReportUtils(report);
     const reportHasDuplicatedTransactions = reportTransactions.some((transaction) =>
         isDuplicate(transaction, currentUserLogin, currentUserAccountID, report, ownerLogin, policy, violations?.[ONYXKEYS.COLLECTION.TRANSACTION_VIOLATIONS + transaction.transactionID]),
@@ -363,10 +368,6 @@ function isApproveAction(
 
     if (isExpenseReport && isProcessingReport && reportHasDuplicatedTransactions) {
         return true;
-    }
-
-    if (reportTransactions.length > 0 && reportTransactions.every((transaction) => isPending(transaction))) {
-        return false;
     }
 
     const hasAllPendingRTERViolations = allHavePendingRTERViolation(reportTransactions, violations, currentUserLogin, currentUserAccountID, report, ownerLogin, policy);

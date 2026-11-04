@@ -300,6 +300,7 @@ import {
     isDemoTransaction,
     isDistanceRequest,
     isExpenseValueUnsettled,
+    hasOnlyUnsettledOrPendingExpenses,
     isExpensifyCardTransaction,
     isFailedScanAmountPlaceholder,
     isFetchingWaypointsFromServer,
@@ -3429,7 +3430,7 @@ function canApproveIOU(
     const isReportOpen = isOpenExpenseReport(iouReport);
     const isApproved = isReportApproved({report: iouReport});
     const iouSettled = isSettled(iouReport);
-    const hasOnlyPendingCardOrScanningTransactions = reportTransactions.length > 0 && reportTransactions.every((transaction) => isScanning(transaction) || isPending(transaction));
+    const hasOnlyPendingCardOrScanningTransactions = hasOnlyUnsettledOrPendingExpenses(reportTransactions, iouReport ?? undefined);
     if (hasOnlyPendingCardOrScanningTransactions) {
         return false;
     }
@@ -4507,7 +4508,7 @@ function getIconsForChatThread(
         return getIconsForParticipants([CONST.ACCOUNT_ID.CONCIERGE], personalDetails);
     }
 
-    const actorAccountID = getReportActionActorAccountID(parentReportAction, report as OnyxEntry<Report>, report as OnyxEntry<Report>);
+    const actorAccountID = getReportActionActorAccountID(parentReportAction, report, report);
     const actorDetails = actorAccountID ? personalDetails?.[actorAccountID] : undefined;
     const actorDisplayName = temporaryGetDisplayNameOrDefault({passedPersonalDetails: actorDetails, defaultValue: '', shouldFallbackToHidden: false, translate, formatPhoneNumber});
     const actorIcon = {
@@ -6111,7 +6112,7 @@ function canEditMultipleTransactions(
         const actionsForReport = {...(searchSnapshotData?.[reportActionsKey] ?? {}), ...(reportActions?.[reportActionsKey] ?? {})};
         const reportAction = getIOUActionForTransactionID(Object.values(actionsForReport), transaction.transactionID);
         const reportKey = `${ONYXKEYS.COLLECTION.REPORT}${transaction.reportID}` as const;
-        const report = reports?.[reportKey] ?? (searchSnapshotData?.[reportKey] as OnyxEntry<Report>);
+        const report = reports?.[reportKey] ?? searchSnapshotData?.[reportKey];
         const policy = policies?.[`${ONYXKEYS.COLLECTION.POLICY}${report?.policyID}`];
 
         // Expenses on approved and paid reports are intentionally allowed here. Per-field permission is what decides
@@ -6670,7 +6671,7 @@ function getTransactionReportName({
     const isFromExpenseReport = !isEmptyObject(report) && isExpenseReport(report);
 
     if (isSentMoneyReportAction(reportAction)) {
-        return getIOUReportActionDisplayMessage(translate, reportAction as ReportAction, convertToDisplayString, undefined, linkedTransaction);
+        return getIOUReportActionDisplayMessage(translate, reportAction, convertToDisplayString, undefined, linkedTransaction);
     }
 
     const displayTransaction = getDisplayTransactionWithoutInvalidCommuterExclusion({
@@ -7967,7 +7968,7 @@ function buildConciergeGreetingReportAction({reportID, greetingText, created}: B
         message: [{type: CONST.REPORT.MESSAGE.TYPE.COMMENT, html: greetingText, text: greetingText}],
         originalMessage: {html: greetingText, whisperedTo: []},
         shouldShow: true,
-    } as ReportAction;
+    };
 }
 
 /**
@@ -8434,7 +8435,7 @@ function buildOptimisticEmptyReport(
     };
 
     // Compute optimistic report name if applicable
-    const optimisticReportName = computeOptimisticReportName(optimisticEmptyReport as Report, policy, policy?.id, {}, getCurrencyDecimals);
+    const optimisticReportName = computeOptimisticReportName(optimisticEmptyReport, policy, policy?.id, {}, getCurrencyDecimals);
     if (optimisticReportName !== null) {
         optimisticEmptyReport.reportName = optimisticReportName;
     }
@@ -11770,7 +11771,7 @@ function parseReportRouteParams(route: string): ReportRouteParams {
         return {reportID: '', isSubReportPageRoute: false};
     }
 
-    const state = getStateFromPath(parsingRoute as Route);
+    const state = getStateFromPath(parsingRoute);
     const focusedRoute = findFocusedRoute(state);
 
     const reportID = focusedRoute?.params && 'reportID' in focusedRoute.params ? (focusedRoute?.params?.reportID as string) : '';
@@ -12403,7 +12404,7 @@ function getTaskAssigneeChatOnyxData({
             {
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${assigneeChatReportID}`,
-                value: {[optimisticChatCreatedReportAction.reportActionID]: optimisticChatCreatedReportAction as Partial<ReportAction>},
+                value: {[optimisticChatCreatedReportAction.reportActionID]: optimisticChatCreatedReportAction},
             },
         );
 
@@ -12484,7 +12485,7 @@ function getTaskAssigneeChatOnyxData({
             currentUserEmail,
             currentUserAccountID,
         );
-        const lastAssigneeCommentText = formatReportLastMessageText(getReportActionText(optimisticAssigneeAddComment.reportAction as ReportAction));
+        const lastAssigneeCommentText = formatReportLastMessageText(getReportActionText(optimisticAssigneeAddComment.reportAction));
         const optimisticAssigneeReport = {
             lastVisibleActionCreated: currentTime,
             lastMessageText: lastAssigneeCommentText,
@@ -12496,7 +12497,7 @@ function getTaskAssigneeChatOnyxData({
             {
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${assigneeChatReportID}`,
-                value: {[optimisticAssigneeAddComment.reportAction.reportActionID]: optimisticAssigneeAddComment.reportAction as ReportAction},
+                value: {[optimisticAssigneeAddComment.reportAction.reportActionID]: optimisticAssigneeAddComment.reportAction},
             },
             {
                 onyxMethod: Onyx.METHOD.MERGE,
@@ -13812,7 +13813,7 @@ function prepareOnboardingOnyxData({
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${targetChatReportID}`,
                 value: {
-                    [taskReportAction.reportAction.reportActionID]: taskReportAction.reportAction as ReportAction,
+                    [taskReportAction.reportAction.reportActionID]: taskReportAction.reportAction,
                 },
             },
             {
@@ -13841,7 +13842,7 @@ function prepareOnboardingOnyxData({
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${currentTask.reportID}`,
                 value: {
-                    [taskCreatedAction.reportActionID]: taskCreatedAction as ReportAction,
+                    [taskCreatedAction.reportActionID]: taskCreatedAction,
                 },
             },
         );
@@ -13851,7 +13852,7 @@ function prepareOnboardingOnyxData({
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${currentTask.reportID}`,
                 value: {
-                    [completedTaskReportAction.reportActionID]: completedTaskReportAction as ReportAction,
+                    [completedTaskReportAction.reportActionID]: completedTaskReportAction,
                 },
             });
 
@@ -13877,7 +13878,7 @@ function prepareOnboardingOnyxData({
                 value: {
                     [taskReportAction.reportAction.reportActionID]: {
                         errors: getMicroSecondOnyxErrorWithTranslationKey('report.genericAddCommentFailureMessage'),
-                    } as ReportAction,
+                    },
                 },
             },
             {
@@ -13990,7 +13991,7 @@ function prepareOnboardingOnyxData({
             onyxMethod: Onyx.METHOD.MERGE,
             key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${targetChatReportID}`,
             value: {
-                [textCommentAction.reportActionID]: textCommentAction as ReportAction,
+                [textCommentAction.reportActionID]: textCommentAction,
             },
         });
     }
@@ -14229,7 +14230,7 @@ function prepareOnboardingOnyxData({
                 onyxMethod: Onyx.METHOD.MERGE,
                 key: `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${targetChatReportID}`,
                 value: {
-                    [welcomeSignOffCommentAction.reportActionID]: welcomeSignOffCommentAction as ReportAction,
+                    [welcomeSignOffCommentAction.reportActionID]: welcomeSignOffCommentAction,
                 },
             });
 

@@ -1703,6 +1703,11 @@ function isExpenseValueUnsettled(transaction: Transaction, report: OnyxEntry<Rep
     return isTransactionScanning(transaction) || (isExpensifyCardTransaction(transaction) && isPending(transaction)) || hasSmartScanFailedWithMissingFields([transaction], report);
 }
 
+/** Reports containing only unfinished expenses have nothing the approver can approve yet. */
+function hasOnlyUnsettledOrPendingExpenses(transactions: Transaction[], report: OnyxEntry<Report>): boolean {
+    return transactions.length > 0 && transactions.every((transaction) => isPending(transaction) || isExpenseValueUnsettled(transaction, report));
+}
+
 /**
  * Check if the initial transaction should be reused for the current file being processed.
  */
@@ -1972,6 +1977,7 @@ export {
     isViolationDismissed,
     isPartialTransaction,
     isExpenseValueUnsettled,
+    hasOnlyUnsettledOrPendingExpenses,
     isScanningTransaction,
     isScanning,
     isTransactionSubmittable,
