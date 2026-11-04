@@ -143,6 +143,12 @@ function GenericTooltip({
             isAnimationCanceled.set(false);
             showTooltip();
         }
+
+        // If the tooltip is not currently visible and the text changes (e.g. recycled row in virtualized list),
+        // reset isRendered to prevent mounting and measuring inactive tooltips.
+        if (!isVisible && prevText !== undefined && prevText !== text) {
+            setIsRendered(false);
+        }
     }, [isVisible, text, prevText, showTooltip, isAnimationCanceled]);
 
     /**
