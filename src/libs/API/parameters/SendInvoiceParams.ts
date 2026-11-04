@@ -12,6 +12,10 @@ type SendInvoiceParams = RequireAtLeastOne<
         merchant: string;
         date: string;
         category?: string;
+        tag?: string;
+        taxCode?: string;
+        taxAmount?: number;
+        billable?: boolean;
         invoiceRoomReportID?: string;
         createdChatReportActionID: string;
         invoiceReportID: string;
