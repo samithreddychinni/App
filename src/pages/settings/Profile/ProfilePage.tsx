@@ -140,6 +140,7 @@ function ProfilePage() {
             description: translate('displayNamePage.headerTitle'),
             title: temporaryGetDisplayNameOrDefault({passedPersonalDetails: currentUserPersonalDetails, translate, formatPhoneNumber}),
             pageRoute: ROUTES.SETTINGS_DISPLAY_NAME,
+            brickRoadIndicator: !currentUserPersonalDetails?.firstName || !currentUserPersonalDetails?.lastName ? CONST.BRICK_ROAD_INDICATOR_STATUS.INFO : undefined,
             testID: 'display-name-menu-item',
             sentryLabel: CONST.SENTRY_LABEL.SETTINGS_PROFILE.DISPLAY_NAME,
         },

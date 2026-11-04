@@ -137,7 +137,8 @@ function useInitialSettingsPageMenuData(currentUserPersonalDetails: CurrentUserP
         surveyCompletedWithinLastMonth = daysSinceLastSurvey < surveyThresholdInDays;
     }
 
-    const profileBrickRoadIndicator = getProfilePageBrickRoadIndicator(loginList, privatePersonalDetails, vacationDelegate, session?.email, shouldShowAddHomeAddress);
+    const hasMissingName = !currentUserPersonalDetails?.firstName || !currentUserPersonalDetails?.lastName;
+    const profileBrickRoadIndicator = getProfilePageBrickRoadIndicator(loginList, privatePersonalDetails, vacationDelegate, session?.email, shouldShowAddHomeAddress, hasMissingName);
     const securityBrickRoadIndicator = hasDeviceManagementErrorValue ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined;
 
     let subscriptionBrickRoadIndicator: ValueOf<typeof CONST.BRICK_ROAD_INDICATOR_STATUS> | undefined;

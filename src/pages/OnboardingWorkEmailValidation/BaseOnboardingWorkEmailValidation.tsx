@@ -83,6 +83,7 @@ function BaseOnboardingWorkEmailValidation({shouldUseNativeStyles, route}: BaseO
     const [conciergeChat] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${conciergeReportID}`);
     const [onboardingPersonalDetails] = useOnyx(ONYXKEYS.FORMS.ONBOARDING_PERSONAL_DETAILS_FORM);
     const [introSelected] = useOnyx(ONYXKEYS.NVP_INTRO_SELECTED);
+    const [hasNonPersonalPolicy] = useOnyx(ONYXKEYS.HAS_NON_PERSONAL_POLICY);
     const [reportNameValuePairs] = useOnyx(ONYXKEYS.COLLECTION.REPORT_NAME_VALUE_PAIRS);
     const continueJoinWorkspaceOnboarding = useContinueJoinWorkspaceOnboarding({
         session,
@@ -120,6 +121,18 @@ function BaseOnboardingWorkEmailValidation({shouldUseNativeStyles, route}: BaseO
             return;
         }
         if (isConciergeTaskFlow && isSubmittingAccountMerge.current) {
+            return;
+        }
+
+        // If merged into an established account (guided setup completed, invited, or has a non-personal policy),
+        // close the onboarding modal and do not force the user through onboarding.
+        const isEstablishedAccount =
+            hasCompletedGuidedSetupFlowSelector(onboardingValues) ||
+            !!introSelected?.inviteType ||
+            !!hasNonPersonalPolicy;
+
+        if (isEstablishedAccount && !isConciergeTaskFlow) {
+            Navigation.dismissModal();
             return;
         }
         // Once we verify that shouldValidate is false, we need to force replace the screen
