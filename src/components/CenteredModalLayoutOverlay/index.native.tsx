@@ -5,7 +5,7 @@ import useThemeStyles from '@hooks/useThemeStyles';
 
 import CONST from '@src/CONST';
 
-import React from 'react';
+import React, {useState} from 'react';
 
 import type CenteredModalLayoutOverlayProps from './types';
 
@@ -13,16 +13,26 @@ import type CenteredModalLayoutOverlayProps from './types';
 function CenteredModalLayoutOverlay({onBackdropPress}: CenteredModalLayoutOverlayProps) {
     const styles = useThemeStyles();
     const {translate} = useLocalize();
+    const [isDismissing, setIsDismissing] = useState(false);
+
+    const handlePress = () => {
+        if (isDismissing) {
+            return;
+        }
+        setIsDismissing(true);
+        onBackdropPress();
+    };
 
     return (
         <PressableWithoutFeedback
-            onPress={onBackdropPress}
+            onPress={handlePress}
             style={styles.fullScreen}
             accessibilityLabel={translate('common.close')}
             role={CONST.ROLE.BUTTON}
             id={CONST.OVERLAY.TOP_BUTTON_NATIVE_ID}
             tabIndex={-1}
             sentryLabel="CenteredModalLayout-backdrop"
+            pointerEvents={isDismissing ? 'none' : 'auto'}
         />
     );
 }

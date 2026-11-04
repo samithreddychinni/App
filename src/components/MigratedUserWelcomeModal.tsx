@@ -11,6 +11,7 @@ import {openExternalLink} from '@libs/actions/Link';
 import {dismissProductTraining} from '@libs/actions/Welcome';
 import convertToLTR from '@libs/convertToLTR';
 import Log from '@libs/Log';
+import {resetSessionFlag} from '@libs/Navigation/guards/MigratedUserWelcomeModalGuard';
 import Navigation from '@libs/Navigation/Navigation';
 import {buildCannedSearchQuery} from '@libs/SearchQueryUtils';
 
@@ -56,12 +57,14 @@ function MigratedUserWelcomeModal() {
 
     const persistDismissal = () => {
         Log.hmmm('[MigratedUserWelcomeModal] dismissing product training');
+        resetSessionFlag();
         dismissProductTraining(CONST.MIGRATED_USER_WELCOME_MODAL);
     };
 
     useBeforeRemove(persistDismissal);
 
     const handleClose = () => {
+        persistDismissal();
         const spendRoute = ROUTES.SEARCH_ROOT.getRoute({query: buildCannedSearchQuery({type: CONST.SEARCH.DATA_TYPES.EXPENSE_REPORT}), searchKey: CONST.SEARCH.SEARCH_KEYS.REPORTS});
         Navigation.goBack(undefined, {
             afterTransition: () => Navigation.navigate(spendRoute),
