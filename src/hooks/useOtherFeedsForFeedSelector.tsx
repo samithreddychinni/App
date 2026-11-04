@@ -59,9 +59,11 @@ function useOtherFeedsForFeedSelector(policyID: string): CardFeedListItem[] {
         // `policyID` is stable for this hook invocation, so uppercase it once instead of per feed/linked-policy evaluation.
         const upperPolicyID = policyID.toUpperCase();
         for (const feed of visibleFeeds) {
-            // Feeds linked to the active policy are shown as available feeds, not under "From other workspaces".
+            // Feeds linked to or preferred by the active policy are shown as available feeds, not under "From other workspaces".
             // Linked policy IDs can differ in casing, so compare case-insensitively (matches the Expensify-card path).
-            if (feed?.linkedPolicyIDs?.filter(Boolean).some((linkedPolicyID) => linkedPolicyID.toUpperCase() === upperPolicyID)) {
+            const isLinkedToActivePolicy = feed?.linkedPolicyIDs?.filter(Boolean).some((linkedPolicyID) => linkedPolicyID.toUpperCase() === upperPolicyID);
+            const isPreferredForActivePolicy = feed?.preferredPolicy ? feed.preferredPolicy.toUpperCase() === upperPolicyID : false;
+            if (isLinkedToActivePolicy || isPreferredForActivePolicy) {
                 continue;
             }
             const feedName = feed.feed as CompanyCardFeedWithNumber;
@@ -78,7 +80,7 @@ function useOtherFeedsForFeedSelector(policyID: string): CardFeedListItem[] {
             // Use the same fundID-aware domain lookup as the visibility logic (`getVisibleCompanyCardFeedsForSelector`)
             // so the domain email resolves even when the domains collection isn't keyed by fundID.
             const domain = getDomainByFundID(allDomains, Number(feed.fundID));
-            const firstLinkedPolicyID = feed?.linkedPolicyIDs?.at(0);
+            const firstLinkedPolicyID = feed?.linkedPolicyIDs?.at(0) ?? feed?.preferredPolicy;
             // POLICY collection entries are keyed by uppercase policy IDs, so we uppercase before indexing (matches the Expensify-card path).
             const linkedPolicy = firstLinkedPolicyID ? allPolicies?.[`${ONYXKEYS.COLLECTION.POLICY}${firstLinkedPolicyID.toUpperCase()}`] : undefined;
             const domainName = domain?.email ? Str.extractEmailDomain(domain.email) : undefined;

@@ -57,14 +57,13 @@ const useCardFeeds = (policyID: string | undefined): [CombinedCardFeeds | undefi
         // `policyID` is stable for this hook invocation, so uppercase it once instead of per feed evaluation.
         const upperPolicyID = policyID.toUpperCase();
         const shouldIncludeFeedPredicate = (combinedCardFeed: CombinedCardFeed) => {
-            const validLinkedPolicyIDs = combinedCardFeed?.linkedPolicyIDs?.filter(Boolean);
-            if (validLinkedPolicyIDs?.length) {
-                // Linked policy IDs can differ in casing, so compare case-insensitively. This keeps the "available"
-                // list aligned with the case-insensitive "From other workspaces" check in useOtherFeedsForFeedSelector,
-                // so a case-mismatched linked feed isn't dropped from both lists and lost.
-                return validLinkedPolicyIDs.some((linkedPolicyID) => linkedPolicyID.toUpperCase() === upperPolicyID);
+            const validLinkedPolicyIDs = combinedCardFeed?.linkedPolicyIDs?.filter(Boolean) ?? [];
+            const isLinked = validLinkedPolicyIDs.some((linkedPolicyID) => linkedPolicyID.toUpperCase() === upperPolicyID);
+            const isPreferred = combinedCardFeed.preferredPolicy ? combinedCardFeed.preferredPolicy.toUpperCase() === upperPolicyID : false;
+            if (isLinked || isPreferred) {
+                return true;
             }
-            return combinedCardFeed.preferredPolicy ? combinedCardFeed.preferredPolicy === policyID : combinedCardFeed.domainID === effectiveWorkspaceAccountID;
+            return !validLinkedPolicyIDs.length && !combinedCardFeed.preferredPolicy ? combinedCardFeed.domainID === effectiveWorkspaceAccountID : false;
         };
         workspaceFeeds = getCombinedCardFeedsFromAllFeeds(allFeeds, shouldIncludeFeedPredicate, feedKeysWithCards);
     }

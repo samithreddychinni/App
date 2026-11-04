@@ -53,6 +53,7 @@ type CardFeedForDisplay = {
     name: string;
     country?: string;
     linkedPolicyIDs?: string[];
+    preferredPolicy?: string;
 
     /**
      * Supporting text shown beneath the feed name in the Spend page feed filter so feeds of the same
@@ -333,7 +334,7 @@ function getAssignedCardFeedAccess(
 
     const feedSettings = getFeedSettingsForCard(card, allCardFeeds);
     const linkedPolicyIDs = feedSettings?.linkedPolicyIDs?.filter(Boolean) ?? [];
-    const namedPolicyIDs = linkedPolicyIDs.length ? linkedPolicyIDs : [feedSettings?.preferredPolicy].filter((policyID): policyID is string => !!policyID);
+    const namedPolicyIDs = Array.from(new Set([...linkedPolicyIDs, feedSettings?.preferredPolicy].filter((policyID): policyID is string => !!policyID)));
     // A feed spells its policy IDs however the back end sent them, while the Onyx key is upper case, so the ID is
     // normalized here as it is wherever else a feed's workspace is looked up.
     const namedPolicies = namedPolicyIDs.map((policyID) => policies?.[`${ONYXKEYS.COLLECTION.POLICY}${policyID.toUpperCase()}`]).filter((policy) => !!policy);
@@ -393,14 +394,20 @@ function getCardFeedsForDisplayPerPolicy(
                 name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed], false) ?? feed,
             };
 
-            const validLinkedPolicyIDs = linkedPolicyIDs?.filter(Boolean);
-            if (validLinkedPolicyIDs?.length) {
-                // Index the feed under each linked policy so it appears for all of them
-                for (const linkedPolicyID of validLinkedPolicyIDs) {
-                    (cardFeedsForDisplayPerPolicy[linkedPolicyID] ||= []).push(feedEntry);
+            const validLinkedPolicyIDs = linkedPolicyIDs?.filter(Boolean) ?? [];
+            const policyIDsToIndex = new Set<string>();
+            for (const linkedPolicyID of validLinkedPolicyIDs) {
+                policyIDsToIndex.add(linkedPolicyID);
+            }
+            if (preferredPolicy) {
+                policyIDsToIndex.add(preferredPolicy);
+            }
+
+            if (policyIDsToIndex.size > 0) {
+                // Index the feed under each linked policy and preferred policy so it appears for all of them
+                for (const policyIDToIndex of policyIDsToIndex) {
+                    (cardFeedsForDisplayPerPolicy[policyIDToIndex] ||= []).push(feedEntry);
                 }
-            } else if (preferredPolicy) {
-                (cardFeedsForDisplayPerPolicy[preferredPolicy] ||= []).push(feedEntry);
             } else {
                 // Orphan feed: no linkedPolicyIDs and no preferredPolicy.
                 // Find policies whose policyAccountID matches the fundID so the feed
@@ -493,6 +500,7 @@ function getVisibleCompanyCardFeedsForSelector(
             }
             const country = feedData && 'country' in feedData ? (feedData.country ?? '') : '';
             const linkedPolicyIDs = feedData && 'linkedPolicyIDs' in feedData ? feedData.linkedPolicyIDs : undefined;
+            const preferredPolicy = feedData && 'preferredPolicy' in feedData ? (feedData.preferredPolicy ?? '') : '';
             const feed = key;
             const id = `${fundID}_${feed}`;
             if (seenFeedIDs.has(id)) {
@@ -505,6 +513,7 @@ function getVisibleCompanyCardFeedsForSelector(
                 country,
                 fundID,
                 linkedPolicyIDs,
+                preferredPolicy,
                 name: getCustomOrFormattedFeedName(translate, feed, cardFeeds?.settings?.companyCardNicknames?.[feed], false) ?? feed,
             });
         }
