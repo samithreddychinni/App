@@ -257,6 +257,9 @@ function BaseTextInput({
         if (
             hasValue ||
             isFocused ||
+            !!forceActiveLabel ||
+            !!prefixCharacter ||
+            !!suffixCharacter ||
             // If the text has been supplied by Chrome autofill, the value state is not synced with the value
             // as Chrome doesn't trigger a change event. When there is autofill text, keep the label activated.
             isInputAutoFilled(input.current)
@@ -265,7 +268,7 @@ function BaseTextInput({
         } else {
             deactivateLabel();
         }
-    }, [activateLabel, deactivateLabel, hasValue, isFocused]);
+    }, [activateLabel, deactivateLabel, forceActiveLabel, hasValue, isFocused, prefixCharacter, suffixCharacter]);
 
     // When the value prop gets cleared externally, we need to keep the ref in sync:
     useEffect(() => {

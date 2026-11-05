@@ -59,4 +59,26 @@ describe('BaseTextInput implementation - HTML paste handler scoping', () => {
         // made every form field in the app subscribe to reports for a path it cannot reach.
         expect(mockUseHtmlPaste).not.toHaveBeenCalled();
     });
+
+    it('activates the label when prefixCharacter is dynamically added to an empty unfocused input', () => {
+        const {rerender} = renderWithProviders(
+            <BaseTextInputImplementation
+                label="Amount"
+                accessibilityLabel="Amount"
+                value=""
+                prefixCharacter=""
+            />,
+        );
+
+        rerender(
+            <ComposeProviders components={[OnyxListItemProvider, LocaleContextProvider]}>
+                <BaseTextInputImplementation
+                    label="Amount"
+                    accessibilityLabel="Amount"
+                    value=""
+                    prefixCharacter="$"
+                />
+            </ComposeProviders>,
+        );
+    });
 });
