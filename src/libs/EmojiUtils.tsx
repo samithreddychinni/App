@@ -122,18 +122,19 @@ const sortByName = (emoji: Emoji, emojiData: RegExpMatchArray) => {
     return true;
 };
 
-const processFrequentlyUsedEmojis = (emojiList?: FrequentlyUsedEmoji[]) => {
-    // Persisted emoji history can contain non-array values despite its declared Onyx type.
-    if (!Array.isArray(emojiList)) {
+const processFrequentlyUsedEmojis = (emojiList?: FrequentlyUsedEmoji[] | Record<string, FrequentlyUsedEmoji>) => {
+    if (!emojiList || typeof emojiList !== 'object') {
         return [];
     }
+
+    const normalizedList = Array.isArray(emojiList) ? emojiList : Object.values(emojiList);
 
     // On AddComment API response, each variant of the same emoji (with different skin tones) is
     // treated as a separate entry due to unique emoji codes for each variant.
     // So merge duplicate emojis, sum their counts, and use the latest lastUpdatedAt timestamp, then sort accordingly.
     // Prefer hexcode as the dedupe key so that entries stored with only a hexcode merge correctly.
     const frequentlyUsedEmojiMap = new Map<string, FrequentlyUsedEmoji>();
-    for (const item of emojiList) {
+    for (const item of normalizedList) {
         let resolvedEmoji: Emoji | undefined;
         if (item.hexcode) {
             resolvedEmoji = Emojis.findEmojiByHexCode(item.hexcode);

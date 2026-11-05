@@ -69,7 +69,6 @@ jest.mock('@assets/emojis', () => ({
 describe('processFrequentlyUsedEmojis', () => {
     it.each([
         {description: 'an empty object', value: {}},
-        {description: 'an object with numeric keys', value: Object.fromEntries([['0', {name: 'grinning_face', count: 1, lastUpdatedAt: 1000}]])},
         {description: 'a boolean', value: true},
         {description: 'a number', value: 42},
         {description: 'a string', value: 'invalid emoji history'},
@@ -83,6 +82,17 @@ describe('processFrequentlyUsedEmojis', () => {
 
         // Then invalid history must not crash the picker or create frequent emoji entries.
         expect(result).toEqual([]);
+    });
+
+    it('should normalize and process emoji history stored as an object with numeric keys', () => {
+        const input = {
+            '0': {code: '😀', name: 'grinning_face', count: 5, lastUpdatedAt: 1000},
+            '1': {code: '👋', name: 'waving_hand', count: 3, lastUpdatedAt: 2000},
+        };
+        const result = processFrequentlyUsedEmojis(input);
+        expect(result).toHaveLength(2);
+        expect(result.at(0)?.name).toBe('grinning_face');
+        expect(result.at(1)?.name).toBe('waving_hand');
     });
 
     it('should return empty array when input is undefined', () => {
