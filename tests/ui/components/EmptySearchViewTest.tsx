@@ -400,4 +400,39 @@ describe('EmptySearchView', () => {
             expect(screen.getByText(translateLocal('search.searchResults.emptyTripResults.buttonText'))).toBeOnTheScreen();
         });
     });
+
+    describe('Reset filters button', () => {
+        it('renders reset filters button in Nothing to show empty state when filters can be reset', async () => {
+            const queryJSON = buildSearchQueryJSON('type:expense status:all tag:Development');
+            render(
+                <Wrapper>
+                    <EmptySearchView
+                        similarSearchHash={1}
+                        type={CONST.SEARCH.DATA_TYPES.EXPENSE}
+                        hasResults={true}
+                        queryJSON={queryJSON}
+                    />
+                </Wrapper>,
+            );
+            await waitForBatchedUpdatesWithAct();
+
+            expect(screen.getByText(translateLocal('search.searchResults.emptyResults.title'))).toBeOnTheScreen();
+            expect(screen.getByText(translateLocal('search.resetFilters'))).toBeOnTheScreen();
+        });
+
+        it('does not render reset filters button when there are no active filters to reset', async () => {
+            render(
+                <Wrapper>
+                    <EmptySearchView
+                        similarSearchHash={1}
+                        type={CONST.SEARCH.DATA_TYPES.EXPENSE}
+                        hasResults={false}
+                    />
+                </Wrapper>,
+            );
+            await waitForBatchedUpdatesWithAct();
+
+            expect(screen.queryByText(translateLocal('search.resetFilters'))).not.toBeOnTheScreen();
+        });
+    });
 });

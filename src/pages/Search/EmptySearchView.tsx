@@ -4,6 +4,7 @@ import type {EmptyStateButton, HeaderMedia} from '@components/EmptyStateComponen
 import useTabRootScrollProps from '@components/Navigation/TabBarBottomContent/useTabRootScrollProps';
 import {useRegisterSearchScrollView, useSearchListScrollLockStyle} from '@components/Search/SearchListScrollLockContext';
 import {SearchScopeProvider} from '@components/Search/SearchScopeProvider';
+import useSearchFiltersReset from '@components/Search/SearchPageHeader/useSearchFiltersReset';
 import type {SearchQueryJSON} from '@components/Search/types';
 import Text from '@components/Text';
 import TextLink from '@components/TextLink';
@@ -213,6 +214,25 @@ function EmptySearchViewContent({
         startTestDrive();
     };
 
+    const {canReset, resetFilters} = useSearchFiltersReset(queryJSON);
+    const resetFiltersButtons: EmptyStateButton[] | undefined = canReset
+        ? [
+              {
+                  buttonText: translate('search.resetFilters'),
+                  buttonAction: resetFilters,
+                  buttonVariant: CONST.BUTTON_VARIANT.SUCCESS,
+                  sentryLabel: CONST.SENTRY_LABEL.SEARCH.EMPTY_STATE.RESET_FILTERS,
+              },
+          ]
+        : undefined;
+
+    const getEmptyResultsContent = (): EmptySearchViewItem => ({
+        ...defaultViewItemHeader.folder,
+        title: translate('search.searchResults.emptyResults.title'),
+        subtitle: translate('search.searchResults.emptyResults.subtitle'),
+        buttons: resetFiltersButtons,
+    });
+
     let content: EmptySearchViewItem | undefined;
 
     if (queryJSON && violationSnapshotStartedAt && isSearchBeforeViolationsSnapshotStarted(queryJSON, violationSnapshotStartedAt)) {
@@ -236,10 +256,11 @@ function EmptySearchViewContent({
                     ...(useFireworks ? defaultViewItemHeader.fireworks : defaultViewItemHeader.folder),
                     title: translate(menuItem.emptyState.title),
                     subtitle: translate(menuItem.emptyState.subtitle),
-                    buttons: menuItem.emptyState.buttons?.map((button) => ({
-                        ...button,
-                        buttonText: translate(button.buttonText),
-                    })),
+                    buttons:
+                        menuItem.emptyState.buttons?.map((button) => ({
+                            ...button,
+                            buttonText: translate(button.buttonText),
+                        })) ?? (menuItem.emptyState.title === 'search.searchResults.emptyResults.title' ? resetFiltersButtons : undefined),
                 };
                 break;
             }
@@ -281,17 +302,9 @@ function EmptySearchViewContent({
                 break;
             case CONST.SEARCH.DATA_TYPES.EXPENSE_REPORT:
                 if (!isFilteredWorkspaceAccessible) {
-                    content = {
-                        ...defaultViewItemHeader.folder,
-                        title: translate('search.searchResults.emptyResults.title'),
-                        subtitle: translate('search.searchResults.emptyResults.subtitle'),
-                    };
+                    content = getEmptyResultsContent();
                 } else if (hasResults && (!queryJSON || !isDefaultExpenseReportsQuery(queryJSON) || hasExpenseReports)) {
-                    content = {
-                        ...defaultViewItemHeader.folder,
-                        title: translate('search.searchResults.emptyResults.title'),
-                        subtitle: translate('search.searchResults.emptyResults.subtitle'),
-                    };
+                    content = getEmptyResultsContent();
                 } else if (!hasResults || !hasExpenseReports) {
                     content = {
                         ...defaultViewItemHeader.folder,
@@ -324,17 +337,9 @@ function EmptySearchViewContent({
             case CONST.SEARCH.DATA_TYPES.EXPENSE:
                 if (!content) {
                     if (!isFilteredWorkspaceAccessible) {
-                        content = {
-                            ...defaultViewItemHeader.folder,
-                            title: translate('search.searchResults.emptyResults.title'),
-                            subtitle: translate('search.searchResults.emptyResults.subtitle'),
-                        };
+                        content = getEmptyResultsContent();
                     } else if (hasResults && (!queryJSON || !isDefaultExpensesQuery(queryJSON) || hasTransactions)) {
-                        content = {
-                            ...defaultViewItemHeader.folder,
-                            title: translate('search.searchResults.emptyResults.title'),
-                            subtitle: translate('search.searchResults.emptyResults.subtitle'),
-                        };
+                        content = getEmptyResultsContent();
                     } else if (!hasResults || !hasTransactions) {
                         content = {
                             ...defaultViewItemHeader.expenses,
@@ -405,11 +410,7 @@ function EmptySearchViewContent({
             case CONST.SEARCH.DATA_TYPES.CHAT:
             default:
                 if (!content) {
-                    content = {
-                        ...defaultViewItemHeader.folder,
-                        title: translate('search.searchResults.emptyResults.title'),
-                        subtitle: translate('search.searchResults.emptyResults.subtitle'),
-                    };
+                    content = getEmptyResultsContent();
                 }
                 break;
         }
@@ -417,11 +418,7 @@ function EmptySearchViewContent({
 
     // Fallback to default content if somehow not set (should never happen in practice)
     if (!content) {
-        content = {
-            ...defaultViewItemHeader.folder,
-            title: translate('search.searchResults.emptyResults.title'),
-            subtitle: translate('search.searchResults.emptyResults.subtitle'),
-        };
+        content = getEmptyResultsContent();
     }
 
     return (
