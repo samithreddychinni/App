@@ -5993,6 +5993,62 @@ describe('actions/Policy', () => {
             await waitForBatchedUpdates();
         });
 
+        it('clears achAccount on policy and unlinks bank account from bankAccountList when switching reimbursement to None', async () => {
+            mockFetch?.pause?.();
+
+            const fakePolicy = createRandomPolicy(0);
+            fakePolicy.id = FAKE_POLICY_ID;
+            fakePolicy.reimbursementChoice = CONST.POLICY.REIMBURSEMENT_CHOICES.REIMBURSEMENT_YES;
+            fakePolicy.achAccount = {
+                bankAccountID: FAKE_BANK_ACCOUNT_ID,
+                accountNumber: FAKE_ACCOUNT_NUMBER,
+                addressName: FAKE_ADDRESS_NAME,
+                bankName: FAKE_BANK_NAME,
+                state: FAKE_BANK_STATE,
+                reimburser: FAKE_REIMBURSER_EMAIL,
+            };
+            const fakeBankAccountList: BankAccountList = {
+                [String(FAKE_BANK_ACCOUNT_ID)]: {
+                    accountData: {
+                        policyIDs: [FAKE_POLICY_ID],
+                        additionalData: {
+                            policyID: FAKE_POLICY_ID,
+                        },
+                    },
+                    methodID: FAKE_BANK_ACCOUNT_ID,
+                },
+            };
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${FAKE_POLICY_ID}`, fakePolicy);
+            await Onyx.set(ONYXKEYS.BANK_ACCOUNT_LIST, fakeBankAccountList);
+            await waitForBatchedUpdates();
+
+            Policy.setWorkspaceReimbursement({
+                policyID: FAKE_POLICY_ID,
+                currentAchAccount: fakePolicy.achAccount,
+                currentReimbursementChoice: fakePolicy.reimbursementChoice,
+                reimbursementChoice: CONST.POLICY.REIMBURSEMENT_CHOICES.REIMBURSEMENT_NO,
+                bankAccountID: FAKE_BANK_ACCOUNT_ID,
+                reimburserEmail: FAKE_REIMBURSER_EMAIL,
+                accountNumber: FAKE_ACCOUNT_NUMBER,
+                addressName: FAKE_ADDRESS_NAME,
+                bankName: FAKE_BANK_NAME,
+                state: FAKE_BANK_STATE,
+                bankAccountList: fakeBankAccountList,
+            });
+            await waitForBatchedUpdates();
+
+            const policy = await getOnyxValue(`${ONYXKEYS.COLLECTION.POLICY}${FAKE_POLICY_ID}`);
+            expect(policy?.reimbursementChoice).toBe(CONST.POLICY.REIMBURSEMENT_CHOICES.REIMBURSEMENT_NO);
+            expect(policy?.achAccount).toBeUndefined();
+
+            const bankAccountList = await getOnyxValue(ONYXKEYS.BANK_ACCOUNT_LIST);
+            expect(bankAccountList?.[String(FAKE_BANK_ACCOUNT_ID)]?.accountData?.policyIDs).toEqual([]);
+            expect(bankAccountList?.[String(FAKE_BANK_ACCOUNT_ID)]?.accountData?.additionalData?.policyID).toBeUndefined();
+
+            await mockFetch?.resume?.();
+            await waitForBatchedUpdates();
+        });
+
         it('restores deposit account collection and countries when switching to None fails', async () => {
             mockFetch?.fail?.();
 

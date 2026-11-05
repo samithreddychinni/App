@@ -1494,15 +1494,16 @@ function setWorkspaceReimbursement({
     bankAccountList = {},
 }: SetWorkspaceReimbursementActionParams) {
     const lastUsedPaymentMethod = typeof lastPaymentMethod === 'string' ? lastPaymentMethod : lastPaymentMethod?.expense?.name;
+    const shouldClearBankAccountID = reimbursementChoice === CONST.POLICY.REIMBURSEMENT_CHOICES.REIMBURSEMENT_NO;
 
     const oldBankAccountID = Object.keys(bankAccountList ?? {}).find((accountID) => {
         const account = bankAccountList?.[accountID];
-        return account?.accountData?.policyIDs?.includes(policyID);
+        return account?.accountData?.policyIDs?.includes(policyID) || account?.accountData?.additionalData?.policyID === policyID;
     });
 
     // A bank account can list the workspace in its policyIDs while the workspace itself points at another account,
     // so the selection is only redundant when the workspace's own bank account is the selected one too.
-    if (oldBankAccountID !== undefined && String(bankAccountID) === oldBankAccountID && currentAchAccount?.bankAccountID === bankAccountID) {
+    if (!shouldClearBankAccountID && oldBankAccountID !== undefined && String(bankAccountID) === oldBankAccountID && currentAchAccount?.bankAccountID === bankAccountID) {
         return;
     }
 
@@ -1514,14 +1515,14 @@ function setWorkspaceReimbursement({
                 reimbursementChoice,
                 isLoadingWorkspaceReimbursement: true,
                 reimburser: reimburserEmail,
-                achAccount: {reimburser: reimburserEmail, bankAccountID, accountNumber, addressName, bankName, state},
+                achAccount: shouldClearBankAccountID ? null : {reimburser: reimburserEmail, bankAccountID, accountNumber, addressName, bankName, state},
                 errorFields: {reimbursementChoice: null},
                 pendingFields: {reimbursementChoice: CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE},
             },
         },
     ];
 
-    if (bankAccountID !== undefined && bankAccountList !== undefined) {
+    if (bankAccountList !== undefined) {
         const optimisticBankAccountList: NullishDeep<BankAccountList> = {};
         if (oldBankAccountID) {
             optimisticBankAccountList[oldBankAccountID] = {
@@ -1532,20 +1533,24 @@ function setWorkspaceReimbursement({
                 },
             };
         }
-        const currentPolicyIDs = bankAccountList?.[bankAccountID]?.accountData?.policyIDs ?? [];
-        optimisticBankAccountList[bankAccountID] = {
-            ...optimisticBankAccountList[bankAccountID],
-            accountData: {
-                policyIDs: [...new Set([...currentPolicyIDs, policyID])],
-                additionalData: {policyID},
-            },
-        };
+        if (!shouldClearBankAccountID && bankAccountID !== undefined) {
+            const currentPolicyIDs = bankAccountList?.[bankAccountID]?.accountData?.policyIDs ?? [];
+            optimisticBankAccountList[bankAccountID] = {
+                ...optimisticBankAccountList[bankAccountID],
+                accountData: {
+                    policyIDs: [...new Set([...currentPolicyIDs, policyID])],
+                    additionalData: {policyID},
+                },
+            };
+        }
 
-        optimisticData.push({
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: ONYXKEYS.BANK_ACCOUNT_LIST,
-            value: optimisticBankAccountList,
-        });
+        if (Object.keys(optimisticBankAccountList).length > 0) {
+            optimisticData.push({
+                onyxMethod: Onyx.METHOD.MERGE,
+                key: ONYXKEYS.BANK_ACCOUNT_LIST,
+                value: optimisticBankAccountList,
+            });
+        }
     }
 
     const successData: Array<OnyxUpdate<typeof ONYXKEYS.COLLECTION.POLICY | typeof ONYXKEYS.NVP_LAST_PAYMENT_METHOD>> = [
@@ -1601,7 +1606,7 @@ function setWorkspaceReimbursement({
         },
     ];
 
-    if (bankAccountID !== undefined && bankAccountList !== undefined) {
+    if (bankAccountList !== undefined) {
         const failureBankAccountList: NullishDeep<BankAccountList> = {};
         if (oldBankAccountID) {
             failureBankAccountList[oldBankAccountID] = {
@@ -1612,18 +1617,22 @@ function setWorkspaceReimbursement({
                 },
             };
         }
-        failureBankAccountList[bankAccountID] = {
-            ...failureBankAccountList[bankAccountID],
-            accountData: {
-                policyIDs: bankAccountList?.[bankAccountID]?.accountData?.policyIDs ?? [],
-                additionalData: {policyID: bankAccountList?.[bankAccountID]?.accountData?.additionalData?.policyID ?? null},
-            },
-        };
-        failureData.push({
-            onyxMethod: Onyx.METHOD.MERGE,
-            key: ONYXKEYS.BANK_ACCOUNT_LIST,
-            value: failureBankAccountList,
-        });
+        if (!shouldClearBankAccountID && bankAccountID !== undefined) {
+            failureBankAccountList[bankAccountID] = {
+                ...failureBankAccountList[bankAccountID],
+                accountData: {
+                    policyIDs: bankAccountList?.[bankAccountID]?.accountData?.policyIDs ?? [],
+                    additionalData: {policyID: bankAccountList?.[bankAccountID]?.accountData?.additionalData?.policyID ?? null},
+                },
+            };
+        }
+        if (Object.keys(failureBankAccountList).length > 0) {
+            failureData.push({
+                onyxMethod: Onyx.METHOD.MERGE,
+                key: ONYXKEYS.BANK_ACCOUNT_LIST,
+                value: failureBankAccountList,
+            });
+        }
     }
 
     // Turning payments off also stops collecting employee bank details and clears the reimbursement countries
@@ -1643,7 +1652,6 @@ function setWorkspaceReimbursement({
         });
     }
 
-    const shouldClearBankAccountID = reimbursementChoice === CONST.POLICY.REIMBURSEMENT_CHOICES.REIMBURSEMENT_NO;
     const params: SetWorkspaceReimbursementParams = {
         policyID,
         reimbursementChoice,
