@@ -11,7 +11,8 @@ import {format} from '@libs/NumberFormatUtils';
 import {setLocale} from '@userActions/App';
 
 import CONST from '@src/CONST';
-import {isSupportedLocale} from '@src/CONST/LOCALES';
+import {buildEmojisTrie} from '@libs/EmojiTrie';
+import {isFullySupportedLocale, isSupportedLocale} from '@src/CONST/LOCALES';
 import IntlStore from '@src/languages/IntlStore';
 import type {TranslationParameters, TranslationPaths} from '@src/languages/types';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -135,6 +136,8 @@ function LocaleContextProvider({children}: LocaleContextProviderProps) {
         }
 
         setCurrentLocale(locale);
+        const normalizedLocale = isFullySupportedLocale(locale) ? locale : CONST.LOCALES.DEFAULT;
+        buildEmojisTrie(normalizedLocale);
     }, [areTranslationsLoading]);
 
     const selectedTimezone = currentUserPersonalDetails?.timezone?.selected;

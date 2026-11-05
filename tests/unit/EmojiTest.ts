@@ -861,4 +861,14 @@ describe('EmojiTest', () => {
         expect(campañaNode?.metaData.suggestions?.some((s) => s.code === '⛺')).toBe(true);
         expect(campañaNode?.metaData.suggestions?.some((s) => s.code === '🔔')).toBe(false);
     });
+
+    it('builds emoji trie upon promise resolution during cold start', async () => {
+        await buildEmojisTrie(CONST.LOCALES.EN);
+        const enTrie = emojiTrieForLocale.en;
+        expect(enTrie).toBeDefined();
+
+        const replaced = EmojiUtils.replaceEmojis(':smile:', CONST.EMOJI_DEFAULT_SKIN_TONE, CONST.LOCALES.EN);
+        expect(replaced.emojis.length).toBeGreaterThan(0);
+        expect(replaced.text).toBe('😄');
+    });
 });

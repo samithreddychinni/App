@@ -134,7 +134,7 @@ const emojiTrieForLocale: EmojiTrieForLocale = Object.values(FULLY_SUPPORTED_LOC
     return acc;
 }, {} as EmojiTrieForLocale);
 
-const buildEmojisTrie = (locale: FullySupportedLocale) => {
+const buildEmojisTrie = (locale: FullySupportedLocale): Promise<void> | void => {
     if (emojiTrieForLocale[locale]) {
         return; // Return early if the trie is already built
     }
@@ -145,10 +145,17 @@ const buildEmojisTrie = (locale: FullySupportedLocale) => {
             name: CONST.TELEMETRY.SPAN_LOCALE.EMOJI_IMPORT,
             op: CONST.TELEMETRY.SPAN_LOCALE.EMOJI_IMPORT,
         });
-        importEmojiLocale(locale).then(() => {
+        return importEmojiLocale(locale).then(() => {
             endSpan(CONST.TELEMETRY.SPAN_LOCALE.EMOJI_IMPORT);
+            if (!emojiTrieForLocale[locale]) {
+                startSpan(CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD, {
+                    name: CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD,
+                    op: CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD,
+                });
+                emojiTrieForLocale[locale] = createTrie(locale);
+                endSpan(CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD);
+            }
         });
-        return;
     }
     startSpan(CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD, {
         name: CONST.TELEMETRY.SPAN_LOCALE.EMOJI_TRIE_BUILD,
