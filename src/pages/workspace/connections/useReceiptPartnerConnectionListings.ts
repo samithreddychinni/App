@@ -1,7 +1,9 @@
 /**
  * Builds the Receipts listings (receipt partners such as Uber for Business) for the Connections page.
  */
+import type {ExpensifyIconName} from '@components/Icon/ExpensifyIconLoader';
 import useGetReceiptPartnersIntegrationData from '@hooks/useGetReceiptPartnersIntegrationData';
+import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
 import usePolicyFeatureWriteAccess from '@hooks/usePolicyFeatureWriteAccess';
@@ -22,6 +24,7 @@ import type {OnyxEntry} from 'react-native-onyx';
 import {useEffect, useRef} from 'react';
 
 import type {ConnectionListing} from './types';
+import {DOCUMENTATION_RECEIPT_INTEGRATIONS} from './utils';
 
 function useReceiptPartnerConnectionListings(policy: OnyxEntry<Policy>): ConnectionListing[] {
     const policyID = policy?.id;
@@ -48,8 +51,20 @@ function useReceiptPartnerConnectionListings(policy: OnyxEntry<Policy>): Connect
     }, [prevIsUberConnected, isUberConnected, policyID, canWrite]);
 
     const uberData = getReceiptPartnersIntegrationData(CONST.POLICY.RECEIPT_PARTNERS.NAME.UBER);
+    const icons = useMemoizedLazyExpensifyIcons(DOCUMENTATION_RECEIPT_INTEGRATIONS.map(({iconName}) => iconName as unknown as ExpensifyIconName));
+
+    const documentationListings: ConnectionListing[] = policyID
+        ? DOCUMENTATION_RECEIPT_INTEGRATIONS.map(({key, title, iconName, helpURL}) => ({
+              key,
+              category: CONST.TAB.CONNECTIONS.RECEIPTS,
+              title,
+              icon: icons[iconName as unknown as ExpensifyIconName],
+              onConnect: () => openExternalLink(helpURL),
+          }))
+        : [];
+
     if (!policyID || !uberData) {
-        return [];
+        return documentationListings;
     }
 
     const connectUber = () => {
@@ -96,6 +111,7 @@ function useReceiptPartnerConnectionListings(policy: OnyxEntry<Policy>): Connect
             isLoading: !policy?.receiptPartners?.uber && !isOffline && !!policy?.isLoadingReceiptPartners,
             onConfigure: () => Navigation.navigate(ROUTES.WORKSPACE_CONNECTIONS_RECEIPT_PARTNERS.getRoute(policyID)),
         },
+        ...documentationListings,
     ];
 }
 

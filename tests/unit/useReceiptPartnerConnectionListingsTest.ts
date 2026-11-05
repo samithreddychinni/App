@@ -12,18 +12,26 @@ import type {Policy} from '@src/types/onyx';
 
 import createRandomPolicy from '../utils/collections/policies';
 
-const mockUberData = {title: 'Uber for Business', description: 'Connected', icon: undefined, errorFields: undefined as Record<string, unknown> | undefined};
+let mockUberData: {title: string; description: string; icon: undefined; errorFields: Record<string, unknown> | undefined} | undefined = {
+    title: 'Uber for Business',
+    description: 'Connected',
+    icon: undefined,
+    errorFields: undefined,
+};
 let mockUberState = {isUberConnected: false, shouldShowEnterCredentialsError: false, errorFields: undefined as Record<string, unknown> | undefined};
 
 jest.mock('@hooks/useGetReceiptPartnersIntegrationData', () => ({
     __esModule: true,
     default: () => ({
-        getReceiptPartnersIntegrationData: () => ({...mockUberData, errorFields: mockUberState.errorFields}),
+        getReceiptPartnersIntegrationData: () => (mockUberData ? {...mockUberData, errorFields: mockUberState.errorFields} : undefined),
         shouldShowEnterCredentialsError: mockUberState.shouldShowEnterCredentialsError,
         isUberConnected: mockUberState.isUberConnected,
     }),
 }));
 jest.mock('@hooks/useLocalize', () => () => ({translate: (key: string) => key}));
+jest.mock('@hooks/useLazyAsset', () => ({
+    useMemoizedLazyExpensifyIcons: () => ({}),
+}));
 jest.mock('@hooks/useNetwork', () => () => ({isOffline: false}));
 jest.mock('@hooks/usePolicyFeatureWriteAccess', () => () => ({canWrite: true, showReadOnlyModal: jest.fn()}));
 jest.mock('@libs/Navigation/Navigation', () => ({__esModule: true, default: {navigate: jest.fn()}}));
@@ -39,6 +47,12 @@ const policy: Policy = {
 describe('useReceiptPartnerConnectionListings', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockUberData = {
+            title: 'Uber for Business',
+            description: 'Connected',
+            icon: undefined,
+            errorFields: undefined,
+        };
         mockUberState = {isUberConnected: false, shouldShowEnterCredentialsError: false, errorFields: undefined};
     });
 
@@ -83,5 +97,39 @@ describe('useReceiptPartnerConnectionListings', () => {
 
         // Then the invite flow opens once, so the admin can invite employees to the new connection
         expect(Navigation.navigate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return documentation receipt listings even when Uber data is not available', () => {
+        // Given a policy with no Uber data
+        mockUberData = undefined;
+
+        // When the listings are built
+        const {result} = renderHook(() => useReceiptPartnerConnectionListings(policy));
+
+        // Then all seven documentation listings are returned
+        expect(result.current).toHaveLength(7);
+        expect(result.current.map((item) => item.key)).toEqual([
+            'lyft',
+            'instacart',
+            'doordash',
+            'americanAirlines',
+            'united',
+            'delta',
+            'kayak',
+        ]);
+        expect(result.current.every((item) => item.category === CONST.TAB.CONNECTIONS.RECEIPTS)).toBe(true);
+    });
+
+    it('should open setup guide external link when pressing "+" on a documentation receipt partner', () => {
+        // Given the listings for a workspace
+        const {result} = renderHook(() => useReceiptPartnerConnectionListings(policy));
+
+        // When pressing "+" on Lyft
+        const lyftListing = result.current.find((item) => item.key === 'lyft');
+        act(() => lyftListing?.onConnect?.());
+
+        // Then the external link opens and policy feature is not enabled
+        expect(openExternalLink).toHaveBeenCalledWith(CONST.LYFT_HELP_URL);
+        expect(enablePolicyFeatureForConnection).not.toHaveBeenCalled();
     });
 });

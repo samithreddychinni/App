@@ -56,6 +56,13 @@ const USE_EXPENSIFY_URL = 'https://use.expensify.com';
 const EXPENSIFY_MOBILE_URL = 'https://expensify.com/mobile';
 const EXPENSIFY_URL = 'https://www.expensify.com';
 const UBER_CONNECT_URL = 'https://business-integrations.uber.com/connect';
+const LYFT_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/Lyft';
+const DELTA_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/Travel-receipt-integrations#delta-for-business';
+const KAYAK_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/Travel-receipt-integrations#kayak-for-business';
+const INSTACART_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/Instacart';
+const DOORDASH_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/DoorDash';
+const AMERICAN_AIRLINES_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/American-Airlines';
+const UNITED_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/United';
 const CHATGPT_CONNECT_URL = 'https://chatgpt.com/plugins/plugin_asdk_app_6a56a498be548191bdf3743878810456?q=expensify';
 const MCP_HELP_URL = 'https://help.expensify.com/articles/new-expensify/connections/connect-ai-assistants/Use-the-Expensify-MCP-Server-With-AI-Assistants';
 const CLAUDE_CONNECT_URL = 'https://claude.ai/directory/connectors/expensify';
@@ -793,6 +800,13 @@ const CONST = {
 
     NEW_EXPENSIFY_URL: ACTIVE_EXPENSIFY_URL,
     UBER_CONNECT_URL,
+    LYFT_HELP_URL,
+    DELTA_HELP_URL,
+    KAYAK_HELP_URL,
+    INSTACART_HELP_URL,
+    DOORDASH_HELP_URL,
+    AMERICAN_AIRLINES_HELP_URL,
+    UNITED_HELP_URL,
     CHATGPT_CONNECT_URL,
     MCP_HELP_URL,
     CLAUDE_CONNECT_URL,
