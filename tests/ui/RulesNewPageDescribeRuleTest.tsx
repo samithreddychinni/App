@@ -489,6 +489,26 @@ describe('New rule describe section', () => {
         expect(mockScrollToEnd).toHaveBeenCalledTimes(1);
     });
 
+    it('scrolls back to the input when tapping the describe box after a refusal', async () => {
+        // Given an admin who described a rule that was refused and scrolled to the end
+        await renderRulesNewPage();
+        const {generationID} = describeRule(writeSpy, 'Text the approver when a report is submitted');
+        await answerGeneration({
+            generationID,
+            state: CONST.GENERATED_RULE.STATE.IMPOSSIBLE,
+            reason: CONST.GENERATED_RULE.IMPOSSIBLE_REASON.NO_CAPABILITY,
+            explanation: 'Rules cannot send text messages.',
+            suggestedPrompt: 'Comment on the report when it is submitted',
+        });
+        expect(mockScrollToEnd).toHaveBeenCalledTimes(1);
+
+        // When the admin taps the describe box to edit the prompt
+        fireEvent.press(screen.getByLabelText('workspace.rules.newRule.describeRulePrompt'));
+
+        // Then the form scrolls back to the input container
+        expect(mockScrollTo).toHaveBeenCalledTimes(1);
+    });
+
     it('drafts the refused description as an agent rule when the admin taps Create anyway', async () => {
         // Given Concierge refused a description on New rule and suggested another one
         const logSpy = jest.spyOn(Log, 'info');

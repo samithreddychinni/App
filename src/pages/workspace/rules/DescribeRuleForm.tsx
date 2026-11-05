@@ -153,6 +153,7 @@ function DescribeRuleForm({
     const formRef = useRef<FormRef>(null);
     const inputRef = useRef<AnimatedTextInputRef>(null);
     const inputTopOffsetRef = useRef(0);
+    const hasScrolledToEndRef = useRef(false);
     const pendingGenerationRef = useRef<PendingGeneration>(undefined);
     const [submittedGenerationID, setSubmittedGenerationID] = useState<string>();
     const [generatedRule] = useOnyx(ONYXKEYS.GENERATED_RULE);
@@ -198,6 +199,7 @@ function DescribeRuleForm({
             stopNewRulePromptLoading();
             // The answer and its buttons show below the input, where the keyboard on iOS and Android covers them
             formRef.current?.scrollToEnd();
+            hasScrolledToEndRef.current = true;
             return;
         }
         if (generatedRuleState !== CONST.GENERATED_RULE.STATE.RULE) {
@@ -298,7 +300,16 @@ function DescribeRuleForm({
 
     // On iOS and Android, the keyboard covers the focused input unless the form scrolls to it. The scroll stops at the end of
     // the content, therefore the submit button below the input also stays in view when it fits.
-    const scrollToInput = () => formRef.current?.scrollTo(inputTopOffsetRef.current);
+    const scrollToInput = () => {
+        hasScrolledToEndRef.current = false;
+        formRef.current?.scrollTo(inputTopOffsetRef.current);
+    };
+
+    const handlePromptChange = () => {
+        if (hasScrolledToEndRef.current) {
+            scrollToInput();
+        }
+    };
 
     const describeSuggestedRule = (suggestedPrompt: string) => {
         Log.info('[GenerateRule] Tried the suggested description', false, {policyID, generationID: refusal?.generationID, reason: refusal?.reason});
@@ -361,6 +372,8 @@ function DescribeRuleForm({
                     role={CONST.ROLE.PRESENTATION}
                     onKeyPress={submitFormOnModEnter}
                     onFocus={scrollToInput}
+                    onPress={scrollToInput}
+                    onValueChange={handlePromptChange}
                     maxLength={CONST.GENERATED_RULE.PROMPT_MAX_LENGTH}
                     multiline
                     shouldSaveDraft
