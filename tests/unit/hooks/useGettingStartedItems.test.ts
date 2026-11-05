@@ -2203,4 +2203,38 @@ describe('useGettingStartedItems', () => {
             expect(result.current.items.some((item) => !item.isComplete)).toBe(true);
         });
     });
+
+    describe('Employee invited to workspace', () => {
+        it('surfaces Getting Started section with 3 steps when invited to a workspace', async () => {
+            await setupSubmitScenario({
+                intent: CONST.ONBOARDING_CHOICES.SUBMIT,
+                policy: {role: CONST.POLICY.ROLE.USER, ownerAccountID: CURRENT_USER_ACCOUNT_ID + 1},
+            });
+
+            const {result} = renderHook(() => useGettingStartedItems());
+            await waitForBatchedUpdates();
+
+            expect(result.current.shouldShowSection).toBe(true);
+            expect(result.current.items).toHaveLength(3);
+            expect(result.current.items.map((item) => item.key)).toEqual(['addYourName', 'addFirstReceipt', 'downloadApp']);
+        });
+
+        it('does not display employee section if user is already a member of multiple workspaces', async () => {
+            await setupSubmitScenario({
+                intent: CONST.ONBOARDING_CHOICES.SUBMIT,
+                policy: {role: CONST.POLICY.ROLE.USER, ownerAccountID: CURRENT_USER_ACCOUNT_ID + 1},
+            });
+
+            // Add a second policy
+            const secondPolicy = buildPolicy({id: '2', role: CONST.POLICY.ROLE.USER});
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}2`, secondPolicy);
+            await waitForBatchedUpdates();
+
+            const {result} = renderHook(() => useGettingStartedItems());
+            await waitForBatchedUpdates();
+
+            expect(result.current.shouldShowSection).toBe(false);
+            expect(result.current.items).toEqual([]);
+        });
+    });
 });

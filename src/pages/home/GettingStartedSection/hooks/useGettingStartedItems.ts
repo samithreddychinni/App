@@ -1,5 +1,7 @@
 import useBankLinkedPersonalCards from '@hooks/useBankLinkedPersonalCards';
 import useCardFeeds from '@hooks/useCardFeeds';
+import useCurrentUserPersonalDetails from '@hooks/useCurrentUserPersonalDetails';
+import useHasLoggedIntoMobileApp from '@hooks/useHasLoggedIntoMobileApp';
 import useLocalize from '@hooks/useLocalize';
 import useOnboardingIntent from '@hooks/useOnboardingIntent';
 import useOnyx from '@hooks/useOnyx';
@@ -13,6 +15,7 @@ import createDynamicRoute from '@libs/Navigation/helpers/dynamicRoutesUtils/crea
 import Navigation from '@libs/Navigation/Navigation';
 import {
     arePolicyRulesEnabled,
+    getActivePolicies,
     getValidConnectedIntegration,
     hasAccountingFeatureConnection,
     hasConfiguredRules,
@@ -97,6 +100,9 @@ function useGettingStartedItems(): UseGettingStartedItemsResult {
     });
     const [draftTransactionIDs] = useOnyx(ONYXKEYS.COLLECTION.TRANSACTION_DRAFT, {selector: validTransactionDraftIDsSelector});
     const personalCards = useBankLinkedPersonalCards();
+    const currentUserPersonalDetails = useCurrentUserPersonalDetails();
+    const {hasLoggedIntoMobileApp} = useHasLoggedIntoMobileApp();
+    const [allPolicies] = useOnyx(ONYXKEYS.COLLECTION.POLICY);
     const isAccountingEnabled = !!policy?.areConnectionsEnabled || hasAccountingFeatureConnection(policy);
 
     const emptyResult: UseGettingStartedItemsResult = {shouldShowSection: false, items: []};
@@ -111,11 +117,55 @@ function useGettingStartedItems(): UseGettingStartedItemsResult {
     };
 
     // "Submit expenses to my employer" writes EMPLOYER when the user picks it themselves and SUBMIT when they were
-    // invited to someone else's workspace. Only the former should see this section, which the ownership gate below enforces.
+    // invited to someone else's workspace.
+    const isJoinWorkspaceIntent = intent === CONST.ONBOARDING_CHOICES.JOIN_WORKSPACE;
     const isSubmitIntent = intent === CONST.ONBOARDING_CHOICES.EMPLOYER || intent === CONST.ONBOARDING_CHOICES.SUBMIT;
 
-    if (intent !== CONST.ONBOARDING_CHOICES.MANAGE_TEAM && intent !== CONST.ONBOARDING_CHOICES.TRACK_WORKSPACE && intent !== CONST.ONBOARDING_CHOICES.TRACK_PERSONAL && !isSubmitIntent) {
+    if (!isJoinWorkspaceIntent && intent !== CONST.ONBOARDING_CHOICES.MANAGE_TEAM && intent !== CONST.ONBOARDING_CHOICES.TRACK_WORKSPACE && intent !== CONST.ONBOARDING_CHOICES.TRACK_PERSONAL && !isSubmitIntent) {
         return emptyResult;
+    }
+
+    const activePolicies = getActivePolicies(allPolicies, currentUserPersonalDetails?.login);
+    const isEmployeeInvitedToWorkspace =
+        (isJoinWorkspaceIntent || (intent === CONST.ONBOARDING_CHOICES.SUBMIT && !isPolicyOwner(policy, currentUserAccountID))) &&
+        activePolicies.length === 1 &&
+        !isPolicyAdmin(activePolicies.at(0));
+
+    if (isEmployeeInvitedToWorkspace) {
+        if (!isWithinGettingStartedPeriod(firstDayFreeTrial ?? policy?.created)) {
+            return emptyResult;
+        }
+
+        const hasCustomDisplayName =
+            !!currentUserPersonalDetails?.firstName ||
+            !!currentUserPersonalDetails?.lastName ||
+            (!!currentUserPersonalDetails?.displayName && currentUserPersonalDetails.displayName !== currentUserPersonalDetails.login);
+
+        const employeeItems: GettingStartedItem[] = [
+            {
+                key: 'addYourName',
+                label: translate('homePage.gettingStartedSection.addYourName'),
+                subText: translate('homePage.gettingStartedSection.addYourNameSubText'),
+                isComplete: hasCustomDisplayName,
+                route: ROUTES.SETTINGS_DISPLAY_NAME,
+            },
+            {
+                key: 'addFirstReceipt',
+                label: translate('homePage.gettingStartedSection.addFirstReceipt'),
+                subText: translate('homePage.gettingStartedSection.addFirstReceiptSubText'),
+                isComplete: hasCreatedExpense,
+                onPress: () => startMoneyRequest(CONST.IOU.TYPE.CREATE, generateReportID(), draftTransactionIDs),
+            },
+            {
+                key: 'downloadApp',
+                label: translate('homePage.gettingStartedSection.downloadApp'),
+                subText: translate('homePage.gettingStartedSection.downloadAppSubText'),
+                isComplete: hasLoggedIntoMobileApp,
+                onPress: () => Navigation.navigate(createDynamicRoute(DYNAMIC_ROUTES.APP_DOWNLOAD_LINKS.path)),
+            },
+        ];
+
+        return buildResult(employeeItems);
     }
 
     // Submit is a free plan, so nvp_private_firstDayFreeTrial is only ever written if the user later upgrades, and by then the
