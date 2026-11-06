@@ -1068,6 +1068,22 @@ describe('WorkspaceMemberDetailsPage', () => {
         await waitForBatchedUpdatesWithAct();
     });
 
+    it('navigates to chat history using Navigation.navigate instead of revealRouteBeforeDismissingModal', async () => {
+        const navigateSpy = jest.spyOn(Navigation, 'navigate').mockImplementation(() => {});
+        const revealSpy = jest.spyOn(Navigation, 'revealRouteBeforeDismissingModal').mockImplementation(() => {});
+
+        // When the admin opens the member details and clicks "See chat history"
+        const {unmount} = renderPage({policyID: policy.id, accountID: String(invitedAccountID)});
+        await waitForBatchedUpdatesWithAct();
+        fireEvent.press(await screen.findByTestId('member-chat-history-menu-item'));
+
+        // Then Navigation.navigate is called with the chat search route, preserving navigation history
+        expect(navigateSpy).toHaveBeenCalledTimes(1);
+        expect(revealSpy).not.toHaveBeenCalled();
+        unmount();
+        await waitForBatchedUpdatesWithAct();
+    });
+
     it('should dim the approver row while approvals are being turned back on offline', async () => {
         // Given approvals being re-enabled offline. That rewrites who everyone submits to, but it marks the policy
         // rather than the employees, so the row has no per-member field to read the change from.
