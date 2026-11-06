@@ -4761,6 +4761,33 @@ describe('SidebarUtils', () => {
                 expect(result.pinnedAndGBRReports.map((report) => report.displayName)).toEqual(['Ñu Safari', 'Nuevo Budget', 'Zote Report']);
             });
 
+            it('should prioritize pinned reports over unpinned GBR reports in pinnedAndGBR category', () => {
+                // Given pinned reports and an unpinned report requiring attention whose name falls between pinned names
+                const categories = {
+                    pinnedAndGBRReports: [
+                        {reportID: '1', displayName: 'Nuevo Budget', sortKey: _buildSortKey('Nuevo Budget'), isPinned: true},
+                        {reportID: '2', displayName: 'Ñu Safari', sortKey: _buildSortKey('Ñu Safari'), isPinned: true},
+                        {reportID: '3', displayName: 'Zote Report', sortKey: _buildSortKey('Zote Report'), isPinned: true},
+                        {reportID: '4', displayName: "Xnnx's expenses", sortKey: _buildSortKey("Xnnx's expenses"), isPinned: false},
+                    ],
+                    errorReports: [],
+                    draftReports: [],
+                    nonArchivedReports: [],
+                    archivedReports: [],
+                };
+
+                // When the reports are sorted
+                const result = _sortCategorizedReports(categories, true, mockLocaleCompare);
+
+                // Then pinned reports appear first in alphabetical order, followed by unpinned GBR reports
+                expect(result.pinnedAndGBRReports.map((report) => report.displayName)).toEqual([
+                    'Ñu Safari',
+                    'Nuevo Budget',
+                    'Zote Report',
+                    "Xnnx's expenses",
+                ]);
+            });
+
             it('should sort reports correctly in default mode', () => {
                 // Given the reports are created
                 const categories = {
