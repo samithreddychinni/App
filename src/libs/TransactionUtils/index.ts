@@ -13,6 +13,7 @@ import type {MachineDateFormat} from '@libs/DateUtils';
 import DateUtils from '@libs/DateUtils';
 import DistanceRequestUtils from '@libs/DistanceRequestUtils';
 import {roundToTwoDecimalPlaces} from '@libs/NumberUtils';
+import {isReceiptError} from '@libs/ErrorUtils';
 import {
     canSubmitPerDiemExpenseFromWorkspace,
     getCommaSeparatedTagNameWithSanitizedColons,
@@ -1166,6 +1167,10 @@ function showHeldExpensesBlockModal(
 function isScanning(transaction: OnyxEntry<Transaction>): boolean {
     // Performance optimization: Check the receipt state first (cheapest check) before doing more expensive checks
     if (!isReceiptBeingScanned(transaction)) {
+        return false;
+    }
+
+    if (Object.values(transaction?.errors ?? {}).some(isReceiptError)) {
         return false;
     }
 

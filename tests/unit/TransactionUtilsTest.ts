@@ -1772,6 +1772,26 @@ describe('TransactionUtils', () => {
 
             expect(TransactionUtils.isScanning(transaction)).toBe(false);
         });
+
+        it('returns false when the transaction contains a receipt upload error', () => {
+            const transaction = generateTransaction({
+                merchant: CONST.TRANSACTION.PARTIAL_TRANSACTION_MERCHANT,
+                amount: 0,
+                modifiedAmount: '',
+                receipt: {
+                    state: CONST.IOU.RECEIPT_STATE.SCAN_READY,
+                },
+                errors: {
+                    receiptError: {
+                        error: CONST.IOU.RECEIPT_ERROR,
+                        source: 'blob:https://staging.new.expensify.com/receipt',
+                        filename: 'receipt.jpg',
+                    },
+                },
+            });
+
+            expect(TransactionUtils.isScanning(transaction)).toBe(false);
+        });
     });
 
     describe('getTransactionType', () => {

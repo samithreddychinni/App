@@ -1030,6 +1030,7 @@ function buildOnyxDataForMoneyRequest(moneyRequestParams: BuildOnyxDataForMoneyR
                 value: {
                     errors: getReceiptError(transaction.receipt, transaction.receipt?.filename, isScanRequest, errorKey, CONST.IOU.ACTION_PARAMS.MONEY_REQUEST),
                     pendingFields: clearedPendingFields,
+                    ...(isScanRequest && transaction.receipt ? {receipt: {state: CONST.IOU.RECEIPT_STATE.SCAN_FAILED}} : {}),
                 },
             },
             {
@@ -1079,6 +1080,7 @@ function buildOnyxDataForMoneyRequest(moneyRequestParams: BuildOnyxDataForMoneyR
                 value: {
                     errors: getReceiptError(transaction.receipt, transaction.receipt?.filename, isScanRequest, errorKey, CONST.IOU.ACTION_PARAMS.MONEY_REQUEST),
                     pendingFields: clearedPendingFields,
+                    ...(isScanRequest && transaction.receipt ? {receipt: {state: CONST.IOU.RECEIPT_STATE.SCAN_FAILED}} : {}),
                 },
             },
             {
