@@ -131,10 +131,10 @@ describe('useFormErrorManagement', () => {
         expect(result.current.errorMessage).toBeUndefined();
     });
 
-    it('errorMessage suppresses required/invalid amount errors (surfaced inline)', () => {
+    it('errorMessage returns summary error for required field errors and suppresses invalid amount (surfaced inline)', () => {
         const {result: required} = renderHook(() => useFormErrorManagement(baseParams), {wrapper: Wrapper});
         act(() => required.current.setFormError('common.error.fieldRequired'));
-        expect(required.current.errorMessage).toBeUndefined();
+        expect(required.current.errorMessage).toBe('Please enter the required fields.');
 
         const {result: invalid} = renderHook(() => useFormErrorManagement(baseParams), {wrapper: Wrapper});
         act(() => invalid.current.setFormError('common.error.invalidAmount'));
@@ -201,10 +201,10 @@ describe('useFormErrorManagement', () => {
         }
     });
 
-    it('errorMessage suppresses the invalid merchant error (surfaced inline)', () => {
+    it('errorMessage returns summary error for the invalid merchant error', () => {
         const {result} = renderHook(() => useFormErrorManagement(baseParams), {wrapper: Wrapper});
         act(() => result.current.setFormError('iou.error.invalidMerchant'));
-        expect(result.current.errorMessage).toBeUndefined();
+        expect(result.current.errorMessage).toBe('Please enter the required fields.');
     });
 
     it('treats the placeholder merchant of an untouched draft as empty, so it is only invalid while a merchant is required', () => {

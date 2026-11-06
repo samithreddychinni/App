@@ -262,25 +262,25 @@ function useFormErrorManagement({
 
     // The amount/date/merchant fields surface these required/invalid errors inline, so repeating them at the bottom of
     // the form would show "This field is required" twice.
-    // `common.error.invalidAmount` is the one exception: it is only surfaced inline while the editable amount input is
-    // rendered. Distance requests disable that input, and the read-only menu row it falls back to doesn't show the error,
-    // so the distance-amount error stays in the footer. Otherwise an invalid distance expense would fail silently.
-    const isSuppressedInline = (error: TranslationPaths | ''): boolean =>
-        error === 'common.error.fieldRequired' || error === 'iou.error.invalidMerchant' || (!isDistanceRequest && error === 'common.error.invalidAmount');
+    // Instead of hiding the error, a summary error is displayed above the footer button so the user is informed
+    // even when the affected field is outside the visible viewport.
+    const isRequiredFieldError = (error: TranslationPaths | ''): boolean => error === 'common.error.fieldRequired' || error === 'iou.error.invalidMerchant';
+
+    const isSuppressedInline = (error: TranslationPaths | ''): boolean => !isDistanceRequest && error === 'common.error.invalidAmount';
 
     const computeErrorMessage = (): string | undefined => {
         if (routeError) {
             return routeError;
         }
-        // This runs ahead of the split branch below because splits render those same inline fields, so they duplicate the same way.
-        if (isSuppressedInline(formError)) {
+        const activeError = isTypeSplit && !shouldShowReadOnlySplits ? debouncedFormError : formError;
+        if (isRequiredFieldError(activeError)) {
+            return translate('iou.error.enterRequiredFields');
+        }
+        if (isSuppressedInline(activeError)) {
             return undefined;
         }
         if (isTypeSplit && !shouldShowReadOnlySplits) {
-            // Splits render the debounced value, so the suppression has to be re-checked against it. `formError` clears
-            // the instant the user fixes the field while `debouncedFormError` lags by USE_DEBOUNCED_STATE_DELAY, and
-            // without this the suppressed error would pop into the footer for that window (#96565).
-            return debouncedFormError && !isSuppressedInline(debouncedFormError) ? translate(debouncedFormError) : undefined;
+            return debouncedFormError ? translate(debouncedFormError) : undefined;
         }
         // Don't show error at the bottom of the form for missing attendees — the field surfaces it inline.
         if (formError === 'violations.missingAttendees') {
