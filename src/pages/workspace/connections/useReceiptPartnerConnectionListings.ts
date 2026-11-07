@@ -1,6 +1,7 @@
 /**
  * Builds the Receipts listings (receipt partners such as Uber for Business) for the Connections page.
  */
+import useAppFocusEvent from '@hooks/useAppFocusEvent';
 import useGetReceiptPartnersIntegrationData from '@hooks/useGetReceiptPartnersIntegrationData';
 import useLocalize from '@hooks/useLocalize';
 import useNetwork from '@hooks/useNetwork';
@@ -11,7 +12,7 @@ import createDynamicRoute from '@libs/Navigation/helpers/dynamicRoutesUtils/crea
 import Navigation from '@libs/Navigation/Navigation';
 
 import {openExternalLink} from '@userActions/Link';
-import {enablePolicyFeatureForConnection} from '@userActions/Policy/Policy';
+import {enablePolicyFeatureForConnection, openPolicyReceiptPartnersPage} from '@userActions/Policy/Policy';
 
 import CONST from '@src/CONST';
 import ROUTES, {DYNAMIC_ROUTES} from '@src/ROUTES';
@@ -19,7 +20,7 @@ import type {Policy} from '@src/types/onyx';
 
 import type {OnyxEntry} from 'react-native-onyx';
 
-import {useEffect, useRef} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 
 import type {ConnectionListing} from './types';
 
@@ -46,6 +47,15 @@ function useReceiptPartnerConnectionListings(policy: OnyxEntry<Policy>): Connect
             ),
         );
     }, [prevIsUberConnected, isUberConnected, policyID, canWrite]);
+
+    const checkUberConnection = useCallback(() => {
+        if (!policyID || !hasStartedUberConnectionRef.current) {
+            return;
+        }
+        openPolicyReceiptPartnersPage(policyID);
+    }, [policyID]);
+
+    useAppFocusEvent(checkUberConnection);
 
     const uberData = getReceiptPartnersIntegrationData(CONST.POLICY.RECEIPT_PARTNERS.NAME.UBER);
     if (!policyID || !uberData) {

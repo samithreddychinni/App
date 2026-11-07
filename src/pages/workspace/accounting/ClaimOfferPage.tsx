@@ -8,6 +8,7 @@ import ScreenWrapper from '@components/ScreenWrapper';
 import ScrollView from '@components/ScrollView';
 import Text from '@components/Text';
 
+import useAppFocusEvent from '@hooks/useAppFocusEvent';
 import useGetReceiptPartnersIntegrationData from '@hooks/useGetReceiptPartnersIntegrationData';
 import {useMemoizedLazyExpensifyIcons} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
@@ -25,13 +26,13 @@ import AccessOrNotFoundWrapper from '@pages/workspace/AccessOrNotFoundWrapper';
 import type {WithPolicyConnectionsProps} from '@pages/workspace/withPolicyConnections';
 import withPolicyConnections from '@pages/workspace/withPolicyConnections';
 
-import {enablePolicyFeatureForConnection} from '@userActions/Policy/Policy';
+import {enablePolicyFeatureForConnection, openPolicyReceiptPartnersPage} from '@userActions/Policy/Policy';
 
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type SCREENS from '@src/SCREENS';
 
-import React, {useEffect} from 'react';
+import React, {useCallback, useEffect} from 'react';
 import {View} from 'react-native';
 
 import {AccountingContextProvider, useAccountingActions} from './AccountingContext';
@@ -101,6 +102,17 @@ function ClaimOfferPage({route, policy}: ClaimOfferPageProps) {
         }
         Navigation.dismissModal();
     }, [isConnectedToIntegration]);
+
+    const checkConnection = useCallback(() => {
+        if (!policyID || isConnectedToIntegration) {
+            return;
+        }
+        if (integration === CONST.POLICY.RECEIPT_PARTNERS.NAME.UBER) {
+            openPolicyReceiptPartnersPage(policyID);
+        }
+    }, [policyID, isConnectedToIntegration, integration]);
+
+    useAppFocusEvent(checkConnection);
 
     const config = integrationConfig[integration as IntegrationType];
 

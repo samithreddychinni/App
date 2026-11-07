@@ -5,7 +5,7 @@ import Navigation from '@libs/Navigation/Navigation';
 import useReceiptPartnerConnectionListings from '@pages/workspace/connections/useReceiptPartnerConnectionListings';
 
 import {openExternalLink} from '@userActions/Link';
-import {enablePolicyFeatureForConnection} from '@userActions/Policy/Policy';
+import {enablePolicyFeatureForConnection, openPolicyReceiptPartnersPage} from '@userActions/Policy/Policy';
 
 import CONST from '@src/CONST';
 import type {Policy} from '@src/types/onyx';
@@ -14,7 +14,11 @@ import createRandomPolicy from '../utils/collections/policies';
 
 const mockUberData = {title: 'Uber for Business', description: 'Connected', icon: undefined, errorFields: undefined as Record<string, unknown> | undefined};
 let mockUberState = {isUberConnected: false, shouldShowEnterCredentialsError: false, errorFields: undefined as Record<string, unknown> | undefined};
+let appFocusCallback: (() => void) | undefined;
 
+jest.mock('@hooks/useAppFocusEvent', () => (callback: () => void) => {
+    appFocusCallback = callback;
+});
 jest.mock('@hooks/useGetReceiptPartnersIntegrationData', () => ({
     __esModule: true,
     default: () => ({
@@ -28,7 +32,10 @@ jest.mock('@hooks/useNetwork', () => () => ({isOffline: false}));
 jest.mock('@hooks/usePolicyFeatureWriteAccess', () => () => ({canWrite: true, showReadOnlyModal: jest.fn()}));
 jest.mock('@libs/Navigation/Navigation', () => ({__esModule: true, default: {navigate: jest.fn()}}));
 jest.mock('@userActions/Link', () => ({openExternalLink: jest.fn()}));
-jest.mock('@userActions/Policy/Policy', () => ({enablePolicyFeatureForConnection: jest.fn()}));
+jest.mock('@userActions/Policy/Policy', () => ({
+    enablePolicyFeatureForConnection: jest.fn(),
+    openPolicyReceiptPartnersPage: jest.fn(),
+}));
 
 const policy: Policy = {
     ...createRandomPolicy(1, CONST.POLICY.TYPE.CORPORATE),
@@ -83,5 +90,17 @@ describe('useReceiptPartnerConnectionListings', () => {
 
         // Then the invite flow opens once, so the admin can invite employees to the new connection
         expect(Navigation.navigate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-fetch receipt partners when app receives focus after starting Uber connection', () => {
+        const {result} = renderHook(() => useReceiptPartnerConnectionListings(policy));
+
+        // When admin connects Uber
+        act(() => result.current.at(0)?.onConnect?.());
+
+        // When the user returns from external Uber onboarding and app focuses
+        act(() => appFocusCallback?.());
+
+        expect(openPolicyReceiptPartnersPage).toHaveBeenCalledWith('policy-1');
     });
 });

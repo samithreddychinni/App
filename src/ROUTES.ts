@@ -1412,12 +1412,12 @@ const DYNAMIC_ROUTES = {
     },
     WORKSPACE_RECEIPT_PARTNERS_INVITE_EDIT: {
         path: ':integration/invite/edit',
-        entryScreens: [SCREENS.WORKSPACE.RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS_RECEIPT_PARTNERS],
+        entryScreens: [SCREENS.WORKSPACE.RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS_RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS],
         getRoute: (integration: string) => `${integration}/invite/edit` as const,
     },
     WORKSPACE_RECEIPT_PARTNERS_INVITE: {
         path: ':integration/invite',
-        entryScreens: [SCREENS.WORKSPACE.RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS_RECEIPT_PARTNERS],
+        entryScreens: [SCREENS.WORKSPACE.RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS_RECEIPT_PARTNERS, SCREENS.WORKSPACE.CONNECTIONS],
         getRoute: (integration: string) => `${integration}/invite` as const,
     },
     EXPENSIFY_CARD_DETAILS: {
