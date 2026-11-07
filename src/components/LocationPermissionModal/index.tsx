@@ -78,11 +78,12 @@ function LocationPermissionModal({startPermissionFlow, resetPermissionFlow, onDe
                 return;
             }
 
-            onInitialGetLocationCompleted?.();
             if (isPermissionGranted(status)) {
                 grantPermission();
                 return;
             }
+
+            onInitialGetLocationCompleted?.();
 
             const hasError = status === RESULTS.BLOCKED;
             isGrantedExternallyRef.current = false;

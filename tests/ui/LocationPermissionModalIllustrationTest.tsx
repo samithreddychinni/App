@@ -161,4 +161,15 @@ describe('the location prompt illustration', () => {
 
         await waitFor(() => expect(onInitialGetLocationCompleted).toHaveBeenCalledTimes(1));
     });
+
+    it('does not clear the caller spinner when permission is already granted', async () => {
+        mockGetLocationPermission.mockResolvedValue('granted');
+        const onInitialGetLocationCompleted = jest.fn();
+        renderModal({modal: LocationPermissionModal, onInitialGetLocationCompleted});
+
+        await finishIllustrationLoading();
+
+        await waitFor(() => expect(mockGetLocationPermission).toHaveBeenCalledTimes(1));
+        expect(onInitialGetLocationCompleted).not.toHaveBeenCalled();
+    });
 });

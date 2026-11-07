@@ -121,11 +121,10 @@ function LocationPermissionModal({startPermissionFlow, resetPermissionFlow, onDe
                 return;
             }
 
-            onInitialGetLocationCompleted?.();
-
             if (isPermissionGranted(status)) {
                 onGrantRef.current();
             } else {
+                onInitialGetLocationCompleted?.();
                 showPermissionModal(status === RESULTS.BLOCKED);
             }
         };

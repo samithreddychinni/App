@@ -620,6 +620,7 @@ function SubmitDetailsPage({
             return;
         }
         formHasBeenSubmitted.current = true;
+        setIsConfirming(true);
         // Nothing ever deletes from ReceiptStorage, so we only adopt once the user submits. A cancelled share stays in
         // the share extension's own folder, which the next share wipes.
         ReceiptStorage.adopt(currentReceiptSource, currentReceiptName)
