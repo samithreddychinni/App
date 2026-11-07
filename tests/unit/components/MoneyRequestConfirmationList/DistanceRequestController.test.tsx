@@ -16,6 +16,7 @@ const mockSetMoneyRequestAmount = jest.fn();
 const mockSetMoneyRequestCommuterExclusionFields = jest.fn();
 const mockSetMoneyRequestMerchant = jest.fn();
 const mockSetMoneyRequestPendingFields = jest.fn();
+const mockSetCustomUnitRateID = jest.fn();
 
 jest.mock('@hooks/useCurrencyList', () => ({
     useCurrencyListActions: () => ({
@@ -43,7 +44,9 @@ jest.mock('@hooks/usePrevious', () => ({
 
 jest.mock('@libs/actions/IOU/MoneyRequest', () => ({
     clearMoneyRequestRateAutoUpdated: jest.fn(),
-    setCustomUnitRateID: jest.fn(),
+    setCustomUnitRateID: (...args: unknown[]) => {
+        mockSetCustomUnitRateID(...args);
+    },
     setMoneyRequestAmount: (...args: unknown[]) => {
         mockSetMoneyRequestAmount(...args);
     },
@@ -208,6 +211,43 @@ describe('DistanceRequestController', () => {
             const clearFormErrors = jest.fn();
             renderController({policy: undefined, isPolicyExpenseChat: false, setFormError: jest.fn(), clearFormErrors});
 
+            expect(clearFormErrors).toHaveBeenCalledWith([RATE_ERROR]);
+        });
+
+        it('auto-selects the eligible workspace rate when customUnitRateID is unset or fake P2P on a workspace chat', () => {
+            const clearFormErrors = jest.fn();
+            render(
+                <DistanceRequestController
+                    transactionID="txn1"
+                    transaction={transaction}
+                    policy={policyWithUnrelatedRate}
+                    isDistanceRequest
+                    isPolicyExpenseChat
+                    isMovingTransactionFromTrackExpense={false}
+                    isReadOnly={false}
+                    isTypeSplit={false}
+                    customUnitRateID={CONST.CUSTOM_UNITS.FAKE_P2P_ID}
+                    currentUserAccountID={1}
+                    selectedParticipants={[]}
+                    selectedParticipantsProp={[]}
+                    setFormError={jest.fn()}
+                    clearFormErrors={clearFormErrors}
+                    distanceState={createMock<ReturnType<typeof useDistanceRequestState>>({
+                        mileageRate: {rate: 67, unit: CONST.CUSTOM_UNITS.DISTANCE_UNIT_MILES, currency: CONST.CURRENCY.USD},
+                        rate: 67,
+                        unit: CONST.CUSTOM_UNITS.DISTANCE_UNIT_MILES,
+                        currency: CONST.CURRENCY.USD,
+                        distance: DistanceRequestUtils.convertToDistanceInMeters(4, CONST.CUSTOM_UNITS.DISTANCE_UNIT_MILES),
+                        distanceRequestAmount: 201,
+                        shouldCalculateDistanceAmount: false,
+                        isDistanceRequestWithPendingRoute: false,
+                        hasRoute: true,
+                        defaultRate: 'rateB',
+                    })}
+                />,
+            );
+
+            expect(mockSetCustomUnitRateID).toHaveBeenCalledWith('txn1', 'rateB', transaction, policyWithUnrelatedRate, false, undefined);
             expect(clearFormErrors).toHaveBeenCalledWith([RATE_ERROR]);
         });
     });

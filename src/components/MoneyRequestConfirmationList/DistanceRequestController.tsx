@@ -169,8 +169,8 @@ function DistanceRequestController({
             return;
         }
 
-        // For the case of moving a track expense we want to auto set best eligible rate from the workspace.
-        if (isMovingTransactionFromTrackExpense) {
+        // For the case of moving a track expense or unset rate we want to auto set best eligible rate from the workspace.
+        if (isMovingTransactionFromTrackExpense || DistanceRequestUtils.isUnsetDistanceCustomUnitRateID(customUnitRateID)) {
             const expenseDate = getCreated(transaction);
             const bestRate = expenseDate ? DistanceRequestUtils.getBestEligibleRate(policyRates, expenseDate) : undefined;
             const fallbackRateID = bestRate?.customUnitRateID ?? defaultMileageRateCustomUnitRateID;
@@ -250,7 +250,7 @@ function DistanceRequestController({
             !transactionID ||
             !lastSelectedRate ||
             (isMovingTransactionFromTrackExpense && customUnitRateID === CONST.CUSTOM_UNITS.FAKE_P2P_ID) ||
-            !selectedParticipants.some((participant) => participant.policyID === policy?.id)
+            !selectedParticipants.some((participant) => participant.policyID === policy?.id || !!participant.reportID)
         ) {
             return;
         }

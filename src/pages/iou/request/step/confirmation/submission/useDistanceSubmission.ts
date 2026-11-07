@@ -6,6 +6,7 @@ import useParticipantsPolicyTags from '@hooks/useParticipantsPolicyTags';
 import usePermissions from '@hooks/usePermissions';
 import useReportTransactions from '@hooks/useReportTransactions';
 
+import DistanceRequestUtils from '@libs/DistanceRequestUtils';
 import {getStringifiedGPSCoordinates} from '@libs/GPSDraftDetailsUtils';
 import {getReusableP2PReportID} from '@libs/IOUUtils';
 import {getChatReportFromMoneyRequestReport, isMoneyRequestReport as isMoneyRequestReportReportUtils} from '@libs/ReportUtils';
@@ -169,7 +170,10 @@ function useDistanceSubmission({
                 taxCode: transactionTaxCode,
                 taxAmount: transactionTaxAmount,
                 taxValue: transactionTaxValue,
-                customUnitRateID: getRateID(transaction) ?? '',
+                customUnitRateID:
+                    policy && DistanceRequestUtils.isUnsetDistanceCustomUnitRateID(getRateID(transaction))
+                        ? (DistanceRequestUtils.getDefaultMileageRate(policy)?.customUnitRateID ?? getRateID(transaction))
+                        : (getRateID(transaction) ?? ''),
                 splitShares: transaction.splitShares,
                 validWaypoints: getValidWaypoints(transaction.comment?.waypoints, true, isGPSDistanceRequest),
                 billable: transaction.billable,

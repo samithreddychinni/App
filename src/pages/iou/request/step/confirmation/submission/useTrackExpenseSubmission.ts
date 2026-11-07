@@ -232,7 +232,10 @@ function useTrackExpenseSubmission({
                     actionableWhisperReportActionID: item.actionableWhisperReportActionID,
                     linkedTrackedExpenseReportAction: item.linkedTrackedExpenseReportAction,
                     linkedTrackedExpenseReportID: item.linkedTrackedExpenseReportID,
-                    customUnitRateID: getRateID(transaction) ?? '',
+                    customUnitRateID:
+                        policy && DistanceRequestUtils.isUnsetDistanceCustomUnitRateID(getRateID(transaction))
+                            ? (DistanceRequestUtils.getDefaultMileageRate(policy)?.customUnitRateID ?? getRateID(transaction))
+                            : (getRateID(transaction) ?? ''),
                     attendees: item.comment?.attendees,
                     isLinkedTrackedExpenseReportArchived,
                     odometerStart: isOdometerDistanceRequest ? item.comment?.odometerStart : undefined,
