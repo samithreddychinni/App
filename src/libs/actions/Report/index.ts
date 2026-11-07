@@ -7405,9 +7405,9 @@ async function exportReportToPDF({reportID}: ExportReportPDFParams) {
 
     const failureData: Array<OnyxUpdate<typeof ONYXKEYS.COLLECTION.NVP_EXPENSIFY_REPORT_PDF_FILENAME>> = [
         {
-            onyxMethod: Onyx.METHOD.MERGE,
+            onyxMethod: Onyx.METHOD.SET,
             key: `${ONYXKEYS.COLLECTION.NVP_EXPENSIFY_REPORT_PDF_FILENAME}${reportID}`,
-            value: 'error',
+            value: CONST.REPORT_DETAILS_MENU_ITEM.ERROR,
         },
     ];
     const params = {

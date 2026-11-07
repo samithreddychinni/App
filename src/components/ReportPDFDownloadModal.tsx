@@ -66,9 +66,16 @@ function ReportPDFDownloadModal({reportID, closeModal, resolveModal}: ReportPDFD
         return hasFinishedPDFDownload ? CONST.FILE_DOWNLOAD_STATUS.READY : CONST.FILE_DOWNLOAD_STATUS.GENERATING;
     })();
 
+    const handleClose = () => {
+        closeModal();
+        if (hasPDFDownloadFailed) {
+            Onyx.set(`${ONYXKEYS.COLLECTION.NVP_EXPENSIFY_REPORT_PDF_FILENAME}${reportID}`, null);
+        }
+    };
+
     return (
         <FileDownloadModalWrapper
-            closeModal={closeModal}
+            closeModal={handleClose}
             resolveModal={resolveModal}
             title={translate('reportDetailsPage.generatingPDF')}
             status={status}

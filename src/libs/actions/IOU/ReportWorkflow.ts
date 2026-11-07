@@ -1335,7 +1335,7 @@ function submitReport({
             value: null,
         });
         failureData.push({
-            onyxMethod: Onyx.METHOD.MERGE,
+            onyxMethod: Onyx.METHOD.SET,
             key: `${ONYXKEYS.COLLECTION.NVP_EXPENSIFY_REPORT_PDF_FILENAME}${expenseReport.reportID}`,
             value: CONST.REPORT_DETAILS_MENU_ITEM.ERROR,
         });

@@ -278,4 +278,21 @@ describe('useReportPDFDownloadModal', () => {
         // Then the stall timer stops
         expect(jest.mocked(useStallLogger).mock.calls.at(-1)?.[0]).toBe(false);
     });
+
+    it('clears failed pdf filename state on modal dismissal', async () => {
+        const {result} = renderReportPDFDownloadModal();
+        await setOnyxValue(PDF_FILENAME_KEY, CONST.REPORT_DETAILS_MENU_ITEM.ERROR);
+
+        await act(async () => {
+            result.current.showReportPDFDownloadModal({reportID: REPORT_ID});
+            await waitForBatchedUpdates();
+        });
+
+        expect(getLatestModalProps()).toEqual(expect.objectContaining({isVisible: true, status: CONST.FILE_DOWNLOAD_STATUS.FAILED}));
+
+        await act(async () => {
+            getLatestModalProps()?.onClose();
+            await waitForBatchedUpdates();
+        });
+    });
 });
