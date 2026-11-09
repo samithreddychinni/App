@@ -28,7 +28,7 @@ import isLoadingOnyxValue from '@src/types/utils/isLoadingOnyxValue';
 
 import {findFocusedRoute, usePreventRemove} from '@react-navigation/native';
 import {authTokenTypeSelector} from '@selectors/Session';
-import React, {useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 
 import SuccessPageBase from './SuccessPageBase';
 
@@ -66,16 +66,14 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
     const isForcedOnboardingHandoff =
         AccountUtils.isForced2FAOnboardingSetup(account, !!hasCompletedGuidedSetupFlow) || (!!account?.requiresTwoFactorAuth && isIncompleteOnboarding && hasSavedOnboardingPath);
     const shouldReturnToOnboardingAfter2FA = isSecuritySettingsFlow && isForcedOnboardingHandoff;
+    const [shouldExitForcedSetup, setShouldExitForcedSetup] = useState(false);
+    const hasExitedForcedSetup = useRef(false);
+
+    usePreventRemove((isForcedSetupFlow || shouldReturnToOnboardingAfter2FA) && !shouldExitForcedSetup, () => {
+        setShouldExitForcedSetup(true);
+    });
 
     const is2FAEnabled = !!account?.requiresTwoFactorAuth;
-
-    const isDismissingRef = useRef(false);
-    const shouldPreventRemove = (isForcedSetupFlow || shouldReturnToOnboardingAfter2FA) && !isDismissingRef.current;
-
-    usePreventRemove(shouldPreventRemove, () => {
-        isDismissingRef.current = true;
-        goBack();
-    });
 
     const completeForcedOnboarding2FAHandoff = () => {
         clearTwoFactorAuthData(is2FAEnabled, true);
@@ -95,14 +93,22 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
         });
     };
 
-    const goBack = () => {
-        isDismissingRef.current = true;
+    // The removal guard must be disabled in a committed render before our own modal dismissal can run.
+    useEffect(() => {
+        if (!shouldExitForcedSetup || hasExitedForcedSetup.current) {
+            return;
+        }
+        hasExitedForcedSetup.current = true;
         if (shouldReturnToOnboardingAfter2FA) {
             completeForcedOnboarding2FAHandoff();
             return;
         }
-        if (isForcedSetupFlow) {
-            sendForcedSetupUserHome();
+        sendForcedSetupUserHome();
+    }, [shouldExitForcedSetup, shouldReturnToOnboardingAfter2FA, completeForcedOnboarding2FAHandoff, sendForcedSetupUserHome]);
+
+    const goBack = () => {
+        if (shouldReturnToOnboardingAfter2FA || isForcedSetupFlow) {
+            setShouldExitForcedSetup(true);
             return;
         }
         if (isUSDBankAccountFlow) {
@@ -122,17 +128,12 @@ function DynamicSuccessPage({route}: DynamicSuccessPageProps) {
     };
 
     const onButtonPress = () => {
-        isDismissingRef.current = true;
         if (CONFIG.IS_HYBRID_APP && isClassicRedirectDismissed && !isClassicRedirectBlocked) {
             closeReactNativeApp({shouldSetNVP: false, isTrackingGPS: false});
             return;
         }
-        if (shouldReturnToOnboardingAfter2FA) {
-            completeForcedOnboarding2FAHandoff();
-            return;
-        }
-        if (isForcedSetupFlow) {
-            sendForcedSetupUserHome();
+        if (shouldReturnToOnboardingAfter2FA || isForcedSetupFlow) {
+            goBack();
             return;
         }
         // For the Settings > Security entry, keep the 2FA RHP open on the Enabled page instead of dismissing it
