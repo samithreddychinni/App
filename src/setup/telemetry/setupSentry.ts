@@ -20,6 +20,7 @@ import * as Sentry from '@sentry/react-native';
 
 import pkg from '../../../package.json';
 import makeDebugTransport from './debugTransport';
+import processAppHangEvent from './processAppHangEvent';
 
 /**
  * Schemes browser extensions inject code under. An error whose top stack frame lives at one of these
@@ -82,6 +83,7 @@ function setupSentry(): void {
             /webkit\.messageHandlers\./,
         ],
         denyUrls: EXTENSION_DENY_URLS,
+        beforeSend: processAppHangEvent,
         beforeSendTransaction: processBeforeSendTransactions,
         beforeSendSpan: processBeforeSendSpan,
         enableLogs: true,

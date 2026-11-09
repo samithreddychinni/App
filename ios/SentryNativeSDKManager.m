@@ -46,11 +46,14 @@ static BOOL initialized = NO;
     NSString *dsn = [self getConfigValue:@"SENTRY_DSN"
         fallback:@"https://7b463fb4d4402d342d1166d929a62f4e@o4510228013121536.ingest.us.sentry.io/4510228107427840"];
 
-    // CFBundleVersion is e.g. "9.4.14.0" but JS release uses "9.4.14-0", so replace the last dot with a hyphen.
+    // CFBundleVersion is e.g. "9.4.14.0" but JS uses semantic version "new.expensify@9.4.14" and dist "0".
     NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"";
     NSRange lastDot = [version rangeOfString:@"." options:NSBackwardsSearch];
+    NSString *semanticVersion = version;
+    NSString *buildNumber = @"";
     if (lastDot.location != NSNotFound) {
-        version = [version stringByReplacingCharactersInRange:lastDot withString:@"-"];
+        semanticVersion = [version substringToIndex:lastDot.location];
+        buildNumber = [version substringFromIndex:lastDot.location + 1];
     }
 
     // On New Architecture, React Native wraps JS errors in C++ exceptions caught by the native crash
@@ -63,6 +66,50 @@ static BOOL initialized = NO;
                 return nil;
             }
         }
+
+        // Filter false-positive AppHang events during background suspension where the main thread is idle in mach_msg
+        SentryException *firstException = event.exceptions.firstObject;
+        BOOL isAppHang = [firstException.type isEqualToString:@"AppHang"] ||
+                         [firstException.mechanism.type isEqualToString:@"AppHang"];
+        if (isAppHang) {
+            UIApplicationState state = UIApplication.sharedApplication.applicationState;
+            BOOL isBackgroundOrInactive = (state != UIApplicationStateActive);
+
+            for (SentryThread *thread in event.threads) {
+                if (thread.isMain && thread.stacktrace != nil) {
+                    SentryFrame *topFrame = thread.stacktrace.frames.lastObject;
+                    NSString *symbol = topFrame.function ?: @"";
+                    if (isBackgroundOrInactive &&
+                        ([symbol containsString:@"mach_msg"] || [symbol containsString:@"CFRunLoopServiceMachPort"])) {
+                        // Drop idle run loop hang captured during OS background suspension
+                        return nil;
+                    }
+                    break;
+                }
+            }
+
+            // Tag native application state and split hang issues by screen
+            NSString *stateString = state == UIApplicationStateActive ? @"active" :
+                                    (state == UIApplicationStateBackground ? @"background" : @"inactive");
+            NSMutableDictionary *tags = [event.tags mutableCopy] ?: [NSMutableDictionary dictionary];
+            tags[@"ios.app_state"] = stateString;
+            event.tags = tags;
+
+            NSString *lastScreen = @"unknown";
+            for (SentryBreadcrumb *breadcrumb in [event.breadcrumbs reverseObjectEnumerator]) {
+                if ([breadcrumb.category isEqualToString:@"navigation.route"] ||
+                    [breadcrumb.category isEqualToString:@"navigation"]) {
+                    NSString *route = breadcrumb.data[@"route"] ?: breadcrumb.data[@"screen"];
+                    if (route.length > 0) {
+                        lastScreen = route;
+                        break;
+                    }
+                }
+            }
+            NSString *hangType = [event.level isEqualToString:@"fatal"] ? @"fully_blocking" : @"non_fully_blocking";
+            event.fingerprint = @[@"app-hang", hangType, lastScreen];
+        }
+
         return event;
     };
 
@@ -71,9 +118,14 @@ static BOOL initialized = NO;
         @"environment": environment,
         @"debug": @([environment isEqualToString:@"development"]),
         @"beforeSend": beforeSend,
+        @"enableMetricKit": @YES,
+        @"enableReportNonFullyBlockingAppHangs": @NO,
     } mutableCopy];
-    if (version.length > 0) {
-        optionsDict[@"release"] = [NSString stringWithFormat:@"new.expensify@%@", version];
+    if (semanticVersion.length > 0) {
+        optionsDict[@"release"] = [NSString stringWithFormat:@"new.expensify@%@", semanticVersion];
+    }
+    if (buildNumber.length > 0) {
+        optionsDict[@"dist"] = buildNumber;
     }
 
     NSError *error = nil;
