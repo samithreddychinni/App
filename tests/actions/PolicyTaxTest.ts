@@ -696,6 +696,7 @@ describe('actions/PolicyTax', () => {
                                     expect(taxRates?.pendingFields?.foreignTaxDefault).toBeFalsy();
                                     expect(taxRates?.foreignTaxDefault).toBe(foreignTaxDefault);
                                     expect(deletedTax?.pendingAction).toBe(CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE);
+                                    expect(deletedTax?.isDisabled).toBe(true);
                                     expect(deletedTax?.errors).toBeFalsy();
                                     resolve();
                                 },
@@ -748,6 +749,7 @@ describe('actions/PolicyTax', () => {
                                     expect(taxRates?.pendingFields?.foreignTaxDefault).toBe(CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE);
                                     expect(taxRates?.foreignTaxDefault).toBe(firstTaxID);
                                     expect(deletedTax?.pendingAction).toBe(CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE);
+                                    expect(deletedTax?.isDisabled).toBe(true);
                                     expect(deletedTax?.errors).toBeFalsy();
                                     resolve();
                                 },
@@ -793,6 +795,7 @@ describe('actions/PolicyTax', () => {
                                     expect(taxRates?.pendingFields?.foreignTaxDefault).toBeFalsy();
                                     expect(taxRates?.foreignTaxDefault).toBe(foreignTaxDefault);
                                     expect(deletedTax?.pendingAction).toBe(CONST.RED_BRICK_ROAD_PENDING_ACTION.DELETE);
+                                    expect(deletedTax?.isDisabled).toBe(true);
                                     expect(deletedTax?.errors).toBeFalsy();
                                     resolve();
                                 },
@@ -815,6 +818,7 @@ describe('actions/PolicyTax', () => {
                                     const deletedTax = taxRates?.taxes?.[taxID];
                                     expect(taxRates?.pendingFields?.foreignTaxDefault).toBeFalsy();
                                     expect(deletedTax?.pendingAction).toBeFalsy();
+                                    expect(deletedTax?.isDisabled).toBe(false);
                                     expect(deletedTax?.errors).toBeTruthy();
                                     resolve();
                                 },
