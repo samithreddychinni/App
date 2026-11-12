@@ -77,6 +77,7 @@ function GenericTooltip({
     const isTooltipSenseInitiator = useSharedValue<boolean>(true);
     const isAnimationCanceled = useSharedValue<boolean>(false);
     const prevText = usePrevious(text);
+    const shouldRenderTooltip = shouldRender && isRendered && (isVisible || prevText === undefined || prevText === text);
 
     // The target bounds are only re-measured once the tooltip becomes visible. Showing instantly before that commit would
     // paint the tooltip at its last position for a frame, e.g. after the target moved because the RHP was resized.
@@ -197,7 +198,7 @@ function GenericTooltip({
 
     return (
         <>
-            {shouldRender && isRendered && (
+            {shouldRenderTooltip && (
                 <BaseGenericTooltip
                     isEducationTooltip={isEducationTooltip}
                     animation={animation}

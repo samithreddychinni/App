@@ -29,11 +29,8 @@ function TextWithTooltip({testID, text, shouldShowTooltip, style, numberOfLines 
                     if (!shouldShowTooltip) {
                         return;
                     }
-                    if (target.scrollWidth > target.offsetWidth || target.scrollHeight > target.offsetHeight) {
-                        setShowTooltip(true);
-                        return;
-                    }
-                    setShowTooltip(false);
+                    const isTextTruncated = target.scrollWidth > target.offsetWidth || target.scrollHeight > target.offsetHeight;
+                    setShowTooltip((prev) => (prev === isTextTruncated ? prev : isTextTruncated));
                 }}
                 fsClass={forwardedFSClass}
                 dataSet={isSelectable ? COPYABLE_TEXT_DATA_SET : undefined}

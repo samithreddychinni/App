@@ -72,6 +72,9 @@ type GenericTooltipProps = SharedTooltipProps & {
 
 type TooltipProps = ChildrenProps &
     SharedTooltipProps & {
+        /** Whether the tooltip content should be rendered while keeping the target wrapper mounted. */
+        shouldRender?: boolean;
+
         /** passes this down to Hoverable component to decide whether to handle the scroll behaviour to show hover once the scroll ends */
         shouldHandleScroll?: boolean;
 

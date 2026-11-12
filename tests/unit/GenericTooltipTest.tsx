@@ -9,6 +9,9 @@ import type * as Reanimated from 'react-native-reanimated';
 import React from 'react';
 
 let mockAnimation: Reanimated.SharedValue<number> | undefined;
+let mockBaseGenericTooltipRenderCount = 0;
+
+jest.mock('react-native-key-command', () => ({}));
 
 // The reanimated mock creates a new shared value on every render, so a value set in an event handler would be lost by the
 // next render. Keep one shared value per component instance, like the real hook does.
@@ -24,6 +27,7 @@ jest.mock('react-native-reanimated', () => {
 jest.mock('@components/Tooltip/BaseGenericTooltip', () => ({
     __esModule: true,
     default: ({animation}: {animation: Reanimated.SharedValue<number>}) => {
+        mockBaseGenericTooltipRenderCount += 1;
         mockAnimation = animation;
         return null;
     },
@@ -41,8 +45,13 @@ jest.mock('@components/Tooltip/TooltipSense', () => ({
 jest.mock('@libs/Log', () => ({warn: jest.fn()}));
 
 jest.mock('@hooks/useLocalize', () => jest.fn(() => ({preferredLocale: 'en'})));
+jest.mock('@hooks/useWindowDimensions', () => jest.fn(() => ({windowWidth: 1024, windowHeight: 768})));
 
 describe('GenericTooltip', () => {
+    beforeEach(() => {
+        mockBaseGenericTooltipRenderCount = 0;
+    });
+
     it('defers the instant TooltipSense show until the visible state commits', () => {
         // Given a tooltip that was shown once and hidden again, while TooltipSense is active because another tooltip was just hovered
         let tooltipState: GenericTooltipState | undefined;
@@ -69,5 +78,32 @@ describe('GenericTooltip', () => {
 
         // Then it shows instantly once the commit happened
         expect(mockAnimation?.get()).toBe(1);
+    });
+
+    it('does not render an inactive tooltip when a virtualized row receives new text', () => {
+        let tooltipState: GenericTooltipState | undefined;
+        const {rerender} = render(
+            <GenericTooltip text="Old report">
+                {(state) => {
+                    tooltipState = state;
+                    return null;
+                }}
+            </GenericTooltip>,
+        );
+
+        act(() => tooltipState?.showTooltip());
+        act(() => tooltipState?.hideTooltip());
+        expect(mockBaseGenericTooltipRenderCount).toBe(1);
+
+        rerender(
+            <GenericTooltip text="New report">
+                {(state) => {
+                    tooltipState = state;
+                    return null;
+                }}
+            </GenericTooltip>,
+        );
+
+        expect(mockBaseGenericTooltipRenderCount).toBe(1);
     });
 });
