@@ -12,9 +12,7 @@ const WORKSPACE_TO_RHP: Partial<Record<keyof WorkspaceSplitNavigatorParamList, s
         SCREENS.WORKSPACE.DYNAMIC_WORKSPACE_OVERVIEW_ADDRESS,
         SCREENS.WORKSPACE.OFFICE_LOCATION_ADD,
         SCREENS.WORKSPACE.OFFICE_LOCATION_EDIT,
-        SCREENS.WORKSPACE.CURRENCY,
         SCREENS.WORKSPACE.TIMEZONE,
-        SCREENS.WORKSPACE.CURRENCY_GOVERNMENT_RATE_COUNTRY,
         SCREENS.WORKSPACE.DESCRIPTION,
         SCREENS.WORKSPACE.SHARE,
         SCREENS.WORKSPACE.RULES_CUSTOM,
@@ -336,6 +334,14 @@ const WORKSPACE_TO_RHP: Partial<Record<keyof WorkspaceSplitNavigatorParamList, s
         SCREENS.WORKSPACE.ACCOUNTING.BUSINESS_CENTRAL_ACCOUNTING_METHOD,
         SCREENS.WORKSPACE.ACCOUNTING.BUSINESS_CENTRAL_ADVANCED_POSTING_MODE,
         SCREENS.WORKSPACE.ACCOUNTING.BUSINESS_CENTRAL_BANK_ACCOUNT_SELECTOR,
+        // The currency editor and its nested government-rate country selector are shared by Accounting connectors
+        // (Digits, Workflows, Invoices, Expensify Card) that sit inside Workspace > Accounting. Registering them
+        // here rather than under PROFILE ensures that getMatchingFullScreenRoute reconstructs Accounting (not
+        // Overview) as the background pane when the browser is refreshed while the currency editor is open.
+        // Because createInverseRelation takes last-write-wins and ACCOUNTING.ROOT is processed after PROFILE,
+        // this entry overrides the PROFILE mapping for these two screens.
+        SCREENS.WORKSPACE.CURRENCY,
+        SCREENS.WORKSPACE.CURRENCY_GOVERNMENT_RATE_COUNTRY,
     ],
     [SCREENS.WORKSPACE.TAXES]: [
         SCREENS.WORKSPACE.TAXES_SETTINGS,

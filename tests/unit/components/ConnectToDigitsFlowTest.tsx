@@ -69,6 +69,23 @@ describe('ConnectToDigitsFlow', () => {
         expect(mockStartDigitsOAuth).not.toHaveBeenCalled();
     });
 
+    it('should navigate to the Overview currency page when the user confirms the currency change', async () => {
+        // Given a workspace in EUR and the user confirms the currency change prompt
+        mockOutputCurrency = CONST.CURRENCY.EUR;
+        mockShowConfirmModal.mockResolvedValueOnce({action: 'CONFIRM'});
+
+        // When the flow mounts
+        renderInStrictMode();
+        // Allow the async promptCurrencyChange to resolve
+        await Promise.resolve();
+
+        // Then it navigates to the workspace currency page so the user can change to USD.
+        // The currency route is registered under SCREENS.WORKSPACE.ACCOUNTING.ROOT in WORKSPACE_TO_RHP
+        // so that reloading the page restores Accounting (not Overview) as the background pane.
+        expect(mockedNavigate).toHaveBeenCalledTimes(1);
+        expect(mockedNavigate).toHaveBeenCalledWith(ROUTES.WORKSPACE_OVERVIEW_CURRENCY.getRoute(POLICY_ID));
+    });
+
     it('should navigate to the existing connections once when another workspace is connected to Digits', () => {
         // Given a USD workspace whose admin has another workspace connected to Digits
         mockHasReusablePolicies = true;
