@@ -38,9 +38,7 @@ function CopyTextToClipboard({
     const {translate} = useLocalize();
     const icons = useMemoizedLazyExpensifyIcons(['Copy']);
 
-    const copyToClipboard = () => {
-        Clipboard.setString(urlToCopy || text || '');
-    };
+    const copyToClipboard = () => Clipboard.setString(urlToCopy || text || '');
 
     return (
         <PressableWithDelayToggle
