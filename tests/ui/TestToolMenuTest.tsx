@@ -7,6 +7,9 @@ import type {revokeMultifactorAuthenticationCredentials} from '@libs/actions/Mul
 import type * as MultifactorAuthenticationSharedValues from '@libs/MultifactorAuthentication/shared/VALUES';
 import MULTIFACTOR_AUTHENTICATION_VALUES from '@libs/MultifactorAuthentication/VALUES';
 
+import {openApp} from '@userActions/App';
+import {invalidateAuthToken} from '@userActions/Session';
+
 import CONST from '@src/CONST';
 import ROUTES, {DYNAMIC_ROUTES} from '@src/ROUTES';
 
@@ -125,6 +128,10 @@ let mockIsProduction = false;
 jest.mock('@hooks/useEnvironment', () => ({
     __esModule: true,
     default: () => ({isProduction: mockIsProduction}),
+}));
+
+jest.mock('@userActions/App', () => ({
+    openApp: jest.fn(),
 }));
 
 jest.mock('@userActions/Network', () => ({
@@ -386,5 +393,20 @@ describe('TestToolMenu beta overrides', () => {
         // Then Nothing is dismissed, because there is no modal open in this context, and the page opens over Troubleshoot
         expect(mockDismissModal).not.toHaveBeenCalled();
         expect(mockNavigate).toHaveBeenCalledWith(`${ROUTES.SETTINGS_TROUBLESHOOT}/${DYNAMIC_ROUTES.BETA_OVERRIDES.path}`);
+    });
+});
+
+describe('TestToolMenu authentication status', () => {
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('invalidates auth token and triggers openApp when invalidate is pressed', () => {
+        render(<TestToolMenu serverPageRoute={ROUTES.SETTINGS_TROUBLESHOOT_SERVER} />);
+
+        fireEvent.press(screen.getByText('initialSettingsPage.troubleshoot.invalidate'));
+
+        expect(invalidateAuthToken).toHaveBeenCalledTimes(1);
+        expect(openApp).toHaveBeenCalledTimes(1);
     });
 });

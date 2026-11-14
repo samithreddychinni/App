@@ -14,6 +14,7 @@ import Navigation from '@libs/Navigation/Navigation';
 
 import variables from '@styles/variables';
 
+import {openApp} from '@userActions/App';
 import {setShouldFailAllRequests, setShouldForceOffline, setShouldSimulatePoorConnection} from '@userActions/Network';
 import {expireSessionWithDelay, invalidateAuthToken, invalidateCredentials} from '@userActions/Session';
 import {getBackToParam} from '@userActions/TestTool';
@@ -121,7 +122,10 @@ function TestToolMenu({serverPageRoute}: TestToolMenuProps) {
                         <Button
                             sentryLabel={CONST.SENTRY_LABEL.TEST_TOOL_MENU.INVALIDATE_AUTH_TOKEN}
                             size={CONST.BUTTON_SIZE.SMALL}
-                            onPress={() => invalidateAuthToken()}
+                            onPress={() => {
+                                invalidateAuthToken();
+                                openApp();
+                            }}
                         >
                             <Button.Text>{translate('initialSettingsPage.troubleshoot.invalidate')}</Button.Text>
                         </Button>
