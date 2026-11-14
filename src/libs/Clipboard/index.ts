@@ -2,8 +2,6 @@ import * as Browser from '@libs/Browser';
 
 import CONST from '@src/CONST';
 
-import Clipboard from '@react-native-clipboard/clipboard';
-
 import type {CanSetHtml, SetHtml, SetString} from './types';
 
 type ComposerSelection = {
@@ -122,21 +120,62 @@ const setHtml: SetHtml = (html: string, text: string) => {
             .replaceAll(/<mention-report reportID="(\d+)" *\/>/gi, '<mention-report reportID="$1"></mention-report>')
             .replaceAll(/<mention-user accountID="(\d+)" *\/>/gi, '<mention-user accountID="$1"></mention-user>');
 
-        navigator.clipboard.write([
-            new ClipboardItem({
-                /* eslint-disable @typescript-eslint/naming-convention */
-                'text/html': new Blob([htmlNonClosingTags], {type: 'text/html'}),
-                'text/plain': new Blob([text], {type: 'text/plain'}),
-            }),
-        ]);
+        navigator.clipboard
+            .write([
+                new ClipboardItem({
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    'text/html': new Blob([htmlNonClosingTags], {type: 'text/html'}),
+                    'text/plain': new Blob([text], {type: 'text/plain'}),
+                }),
+            ])
+            .catch(() => {
+                setHTMLSync(html, text);
+            });
     }
 };
 
 /**
- * Sets a string on the Clipboard object via react-native-web
+ * Synchronously copy text to the clipboard using execCommand as fallback.
  */
-const setString: SetString = (text) => {
-    Clipboard.setString(text);
+function setStringSync(text: string): boolean {
+    if (typeof document === 'undefined' || !document.body) {
+        return false;
+    }
+
+    const node = document.createElement('textarea');
+    node.value = text;
+    node.setAttribute('readonly', '');
+    node.style.all = 'unset';
+    node.style.opacity = '0';
+    node.style.position = 'fixed';
+    node.style.left = '-9999px';
+    node.style.top = '-9999px';
+    document.body.appendChild(node);
+    node.select();
+
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        return document.execCommand('copy');
+    } catch {
+        return false;
+    } finally {
+        document.body.removeChild(node);
+    }
+}
+
+/**
+ * Sets a string on the Clipboard object safely without unhandled rejections.
+ */
+const setString: SetString = async (text) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch {
+            return setStringSync(text);
+        }
+    }
+    return setStringSync(text);
 };
 
 export default {

@@ -14,16 +14,17 @@ import getButtonState from '@libs/getButtonState';
 import CONST from '@src/CONST';
 import type IconAsset from '@src/types/utils/IconAsset';
 
-import type {StyleProp, TextStyle, ViewStyle} from 'react-native';
+import type {GestureResponderEvent, StyleProp, TextStyle, ViewStyle} from 'react-native';
 
-import React from 'react';
+import React, {useRef} from 'react';
 
 import type {PressableRef} from './GenericPressable/types';
 import type PressableProps from './GenericPressable/types';
 
 import PressableWithoutFeedback from './PressableWithoutFeedback';
 
-type PressableWithDelayToggleProps = PressableProps & {
+type PressableWithDelayToggleProps = Omit<PressableProps, 'onPress'> & {
+    onPress?: (event?: GestureResponderEvent | KeyboardEvent) => void | boolean | Promise<void | boolean>;
     text?: string;
 
     /** The text to display once the pressable is pressed */
@@ -98,13 +99,31 @@ function PressableWithDelayToggle({
     const [isActive, temporarilyDisableInteractions] = useThrottledButtonState();
     const lazyIcons = useMemoizedLazyExpensifyIcons(['Checkmark']);
     const resolvedIconChecked = iconChecked ?? lazyIcons.Checkmark;
+    const isPendingRef = useRef(false);
 
     const updatePressState = () => {
-        if (!isActive) {
+        if (!isActive || isPendingRef.current) {
             return;
         }
-        temporarilyDisableInteractions();
-        onPress?.();
+        const result = onPress?.();
+        if (result instanceof Promise) {
+            isPendingRef.current = true;
+            result
+                .then((didSucceed) => {
+                    if (didSucceed === false) {
+                        return;
+                    }
+                    temporarilyDisableInteractions();
+                })
+                .catch(() => {})
+                .finally(() => {
+                    isPendingRef.current = false;
+                });
+            return;
+        }
+        if (result !== false) {
+            temporarilyDisableInteractions();
+        }
     };
 
     const tooltipTexts = !isActive ? tooltipTextChecked : tooltipText;

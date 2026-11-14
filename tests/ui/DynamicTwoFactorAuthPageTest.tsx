@@ -1,12 +1,14 @@
-import {act, render} from '@testing-library/react-native';
+import {act, fireEvent, render, screen} from '@testing-library/react-native';
 
 import OnyxListItemProvider from '@components/OnyxListItemProvider';
 
+import Clipboard from '@libs/Clipboard';
 import Navigation from '@libs/Navigation/Navigation';
 
 import DynamicTwoFactorAuthPage from '@pages/settings/Security/TwoFactorAuth/DynamicTwoFactorAuthPage';
 
 import {toggleTwoFactorAuth} from '@userActions/Session';
+import {setCodesAreCopied} from '@userActions/TwoFactorAuthActions';
 
 import ONYXKEYS from '@src/ONYXKEYS';
 import ROUTES from '@src/ROUTES';
@@ -118,6 +120,7 @@ function getStateAfterDispatch(): StackState | undefined {
 }
 
 const mockToggleTwoFactorAuth = jest.mocked(toggleTwoFactorAuth);
+const mockSetCodesAreCopied = jest.mocked(setCodesAreCopied);
 const mockGoBack = jest.mocked(Navigation.goBack);
 const mockNavigate = jest.mocked(Navigation.navigate);
 
@@ -305,5 +308,35 @@ describe('DynamicTwoFactorAuthPage', () => {
         expect(mockToggleTwoFactorAuth).not.toHaveBeenCalled();
         expect(mockNavigate).not.toHaveBeenCalled();
         expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it('does not mark codes as copied when clipboard write fails', async () => {
+        jest.spyOn(Clipboard, 'setString').mockResolvedValue(false);
+
+        await Onyx.merge(ONYXKEYS.ACCOUNT, {validated: true, requiresTwoFactorAuth: false, recoveryCodes: RECOVERY_CODES});
+        await renderPage();
+
+        const copyButton = screen.getByText('twoFactorAuth.copyCodes');
+        fireEvent.press(copyButton);
+        await waitForBatchedUpdates();
+
+        expect(Clipboard.setString).toHaveBeenCalledWith(RECOVERY_CODES);
+        expect(mockSetCodesAreCopied).not.toHaveBeenCalled();
+    });
+
+    it('marks codes as copied when clipboard write succeeds', async () => {
+        jest.spyOn(Clipboard, 'setString').mockResolvedValue(true);
+
+        await Onyx.merge(ONYXKEYS.ACCOUNT, {validated: true, requiresTwoFactorAuth: false, recoveryCodes: RECOVERY_CODES});
+        await renderPage();
+
+        const copyButton = screen.getByText('twoFactorAuth.copyCodes');
+        fireEvent.press(copyButton);
+        await act(async () => {
+            await waitForBatchedUpdates();
+        });
+
+        expect(Clipboard.setString).toHaveBeenCalledWith(RECOVERY_CODES);
+        expect(mockSetCodesAreCopied).toHaveBeenCalledTimes(1);
     });
 });
