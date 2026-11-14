@@ -3,8 +3,16 @@ import type {NavigationPartialRoute} from '@libs/Navigation/types';
 
 import type {NavigationState, PartialState} from '@react-navigation/native';
 
+import CONST from '@src/CONST';
+import SCREENS from '@src/SCREENS';
+
 /** One partial route per tab, in the same order as `TAB_SCREENS` (TabRouter expects a stable route list). */
-const TAB_NAVIGATOR_ROUTES: NavigationPartialRoute[] = TAB_SCREENS.map((name) => ({name}));
+const TAB_NAVIGATOR_ROUTES: NavigationPartialRoute[] = TAB_SCREENS.map((name) => {
+    if (name === SCREENS.INSIGHTS) {
+        return {name, params: {dashboardID: CONST.INSIGHTS.DASHBOARD.SPEND}};
+    }
+    return {name};
+});
 
 /**
  * Builds the **full tab strip** as a single `PartialState` for the root tab navigator: every tab slot exists, with the
@@ -24,7 +32,10 @@ function buildTabNavigatorNestedState(selectedTabRoute: NavigationPartialRoute):
             return {
                 ...route,
                 ...(selectedTabRoute.state ? {state: selectedTabRoute.state} : {}),
-                ...(selectedTabRoute.params ? {params: selectedTabRoute.params} : {}),
+                params: {
+                    ...route.params,
+                    ...(selectedTabRoute.params ? selectedTabRoute.params : {}),
+                },
             };
         }
         // Non-focused tabs stay minimal `{ name }` entries so the tab list length matches `TAB_SCREENS`.

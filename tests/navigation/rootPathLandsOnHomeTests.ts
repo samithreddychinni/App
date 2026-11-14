@@ -48,4 +48,14 @@ describe('root path', () => {
         expect(roundTrip('/inbox')).toBe('/inbox');
         expect(roundTrip('/r/123')).toBe('/r/123');
     });
+
+    it('lands on the Insights tab when opening /insights', () => {
+        expect(getFocusedScreenName('/insights')).toBe(SCREENS.INSIGHTS);
+        expect(getFocusedScreenName('/insights/')).toBe(SCREENS.INSIGHTS);
+    });
+
+    it('serializes /insights to the Spend dashboard path', () => {
+        expect(roundTrip('/insights')).toBe('/insights/spend');
+        expect(roundTrip('/insights/')).toBe('/insights/spend');
+    });
 });
