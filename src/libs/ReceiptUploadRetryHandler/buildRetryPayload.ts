@@ -81,7 +81,7 @@ function buildRetryTransactionParams(context: ReceiptRetryContext, receiptFile: 
     if (!transaction || !details) {
         return undefined;
     }
-    const receipt: Receipt = {...receiptFile, source: context.receiptError.source, state: CONST.IOU.RECEIPT_STATE.SCAN_READY};
+    const receipt: Receipt = Object.assign(receiptFile, {source: context.receiptError.source, state: CONST.IOU.RECEIPT_STATE.SCAN_READY});
 
     return {
         amount: details.amount,

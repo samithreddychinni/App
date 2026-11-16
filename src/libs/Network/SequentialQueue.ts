@@ -483,6 +483,14 @@ function process(): Promise<void> {
                 pause();
             }
 
+            if (response?.jsonCode === CONST.JSON_CODE.UPDATE_REQUIRED) {
+                Log.info('[SequentialQueue] Received UPDATE_REQUIRED (426). Pausing queue and rolling back ongoing request.');
+                rollbackOngoingPersistedRequest();
+                pause();
+                resolveIsReadyPromise?.();
+                return;
+            }
+
             Log.info('[SequentialQueue] Removing persisted request because it was processed successfully.', false, {
                 command: requestToProcess.command,
                 remainingRequests: getAllPersistedRequests().length,

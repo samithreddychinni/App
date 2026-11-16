@@ -1,4 +1,5 @@
 import {SIDE_EFFECT_REQUEST_COMMANDS, WRITE_COMMANDS} from '@libs/API/types';
+import {isReceiptError} from '@libs/ErrorUtils';
 import Log from '@libs/Log';
 import PusherUtils from '@libs/PusherUtils';
 import {trackExpenseApiError} from '@libs/telemetry/trackExpenseCreationError';
@@ -101,6 +102,11 @@ function applyHTTPSOnyxUpdates<TKey extends OnyxKey>(
                     return Promise.resolve();
                 }
 
+                if (response.jsonCode === CONST.JSON_CODE.UPDATE_REQUIRED) {
+                    Log.info('[OnyxUpdateManager] Received 426 status code, not applying failure data');
+                    return Promise.resolve();
+                }
+
                 trackExpenseApiError({
                     command: request.command,
                     jsonCode: response.jsonCode ?? 0,
@@ -108,7 +114,29 @@ function applyHTTPSOnyxUpdates<TKey extends OnyxKey>(
                     requestData: request.data,
                 });
 
-                return updateHandler(request.failureData);
+                let failureData = request.failureData;
+                if (typeof response.message === 'string' && response.message.trim().length > 0) {
+                    const serverMessage = response.message.trim();
+                    failureData = failureData.map((update) => {
+                        if (update.key.startsWith(ONYXKEYS.COLLECTION.TRANSACTION) && update.value && typeof update.value === 'object' && 'errors' in update.value) {
+                            const currentErrors = (update.value as {errors?: Record<string, unknown>}).errors;
+                            if (currentErrors && typeof currentErrors === 'object') {
+                                const newErrors: Record<string, unknown> = {...currentErrors};
+                                for (const [key, err] of Object.entries(newErrors)) {
+                                    if (isReceiptError(err)) {
+                                        newErrors[key] = {...err, message: serverMessage};
+                                    } else if (typeof err === 'string') {
+                                        newErrors[key] = serverMessage;
+                                    }
+                                }
+                                return {...update, value: {...update.value, errors: newErrors}};
+                            }
+                        }
+                        return update;
+                    });
+                }
+
+                return updateHandler(failureData);
             }
             return Promise.resolve();
         })
