@@ -19,7 +19,7 @@ import usePolicy from '@hooks/usePolicy';
 import useThemeStyles from '@hooks/useThemeStyles';
 import useVerifyAccountAndResume from '@hooks/useVerifyAccountAndResume';
 
-import {deleteWorkspaceCompanyCardFeed, setAddNewCompanyCardStepAndData, setWorkspaceCompanyCardTransactionLiability} from '@libs/actions/CompanyCards';
+import {clearErrorField, deleteWorkspaceCompanyCardFeed, setAddNewCompanyCardStepAndData, setWorkspaceCompanyCardTransactionLiability} from '@libs/actions/CompanyCards';
 import {
     getCompanyCardFeed,
     getCompanyFeeds,
@@ -130,6 +130,13 @@ function WorkspaceCompanyCardsSettingsPage({
 
     const {isUserValidated, verifyAccountAndResume} = useVerifyAccountAndResume(() => refreshCardFeed());
 
+    const clearLiabilityError = () => {
+        if (!feed) {
+            return;
+        }
+        clearErrorField(feed, domainOrWorkspaceAccountID, 'liabilityType');
+    };
+
     const onToggleLiability = (isOn: boolean) => {
         if (!feed) {
             return;
@@ -139,6 +146,7 @@ function WorkspaceCompanyCardsSettingsPage({
             policyID,
             feed,
             isOn ? CONST.COMPANY_CARDS.DELETE_TRANSACTIONS.ALLOW : CONST.COMPANY_CARDS.DELETE_TRANSACTIONS.RESTRICT,
+            liabilityType,
         );
     };
 
@@ -186,7 +194,12 @@ function WorkspaceCompanyCardsSettingsPage({
                                 {!!selectedFeedData?.errorFields?.forceReimbursable && <MenuItem.BrickRoadIndicator status={CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR} />}
                             </MenuItemField>
                         </OfflineWithFeedback>
-                        <View style={[styles.mv3, styles.mh5]}>
+                        <OfflineWithFeedback
+                            pendingAction={selectedFeedData?.pendingFields?.liabilityType}
+                            errors={selectedFeedData?.errorFields?.liabilityType}
+                            onClose={clearLiabilityError}
+                            style={[styles.mv3, styles.mh5]}
+                        >
                             <ToggleSettingOptionRow
                                 title={translate('workspace.moreFeatures.companyCards.personal')}
                                 switchAccessibilityLabel={translate('workspace.moreFeatures.companyCards.personal')}
@@ -196,7 +209,7 @@ function WorkspaceCompanyCardsSettingsPage({
                                 disabled={isPending}
                             />
                             <Text style={[styles.mutedTextLabel, styles.mt2]}>{translate('workspace.moreFeatures.companyCards.setTransactionLiabilityDescription')}</Text>
-                        </View>
+                        </OfflineWithFeedback>
                         {isDirectFeedType && (
                             <MenuItem.Root
                                 sentryLabel={CONST.SENTRY_LABEL.WORKSPACE.COMPANY_CARDS.SETTINGS_REFRESH_FEED}
