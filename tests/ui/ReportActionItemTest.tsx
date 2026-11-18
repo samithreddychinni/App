@@ -4257,6 +4257,46 @@ describe('ReportActionItem', () => {
             expect(screen.getByText('Hide message')).toBeOnTheScreen();
         });
 
+        it('keeps message revealed when action object is updated or re-rendered without moderation decision changes', async () => {
+            const action = createReportAction(CONST.REPORT.ACTIONS.TYPE.ADD_COMMENT, {});
+            action.message = [{type: 'COMMENT', html: 'bad message', text: 'bad message', moderationDecision: {decision: CONST.MODERATION.MODERATOR_DECISION_HIDDEN}}];
+            const renderResult = renderItemWithAction(action);
+            await waitForBatchedUpdatesWithAct();
+
+            fireEvent.press(screen.getByText('Reveal message'));
+            await waitForBatchedUpdatesWithAct();
+
+            expect(screen.getByText('Hide message')).toBeOnTheScreen();
+
+            // Simulate row re-render with new action reference (e.g. emoji reaction or context menu toggling)
+            const updatedAction = {...action};
+            renderResult.rerender(
+                <ComposeProviders
+                    components={[OnyxListItemProvider, CurrentUserPersonalDetailsProvider, LocaleContextProvider, CurrencyListContextProvider, HTMLEngineProvider, PlaybackContextProvider]}
+                >
+                    <ScreenWrapper testID="test">
+                        <PortalProvider>
+                            <ReportActionItem
+                                reportsParentHierarchy={undefined}
+                                chatReport={undefined}
+                                report={undefined}
+                                transactionThreadReport={undefined}
+                                parentReportAction={undefined}
+                                action={updatedAction}
+                                displayAsGroup={false}
+                                shouldDisplayNewMarker={false}
+                                isFirstVisibleReportAction={false}
+                                isLatestConciergeFeedbackAction={false}
+                            />
+                        </PortalProvider>
+                    </ScreenWrapper>
+                </ComposeProviders>,
+            );
+            await waitForBatchedUpdatesWithAct();
+
+            expect(screen.getByText('Hide message')).toBeOnTheScreen();
+        });
+
         it('actionable track expense whisper renders track expense buttons', async () => {
             const action = createReportAction(CONST.REPORT.ACTIONS.TYPE.ACTIONABLE_TRACK_EXPENSE_WHISPER, {
                 transactionID: 'tx123',

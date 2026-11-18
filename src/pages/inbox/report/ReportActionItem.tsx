@@ -388,8 +388,11 @@ function ReportActionItem({
     // Hide the message if it is being moderated for a higher offense, or is hidden by a moderator
     // Removed messages should not be shown anyway and should not need this flow
     const latestDecision = getReportActionMessage(action)?.moderationDecision?.decision ?? '';
+    const actionName = action.actionName;
+    const isActionPendingRemove = isPendingRemove(action);
+    const reportActionID = action.reportActionID;
     useEffect(() => {
-        if (action.actionName !== CONST.REPORT.ACTIONS.TYPE.ADD_COMMENT) {
+        if (actionName !== CONST.REPORT.ACTIONS.TYPE.ADD_COMMENT) {
             return;
         }
 
@@ -399,12 +402,12 @@ function ReportActionItem({
             return;
         }
 
-        if (![CONST.MODERATION.MODERATOR_DECISION_APPROVED, CONST.MODERATION.MODERATOR_DECISION_PENDING].some((item) => item === latestDecision) && !isPendingRemove(action)) {
+        if (![CONST.MODERATION.MODERATOR_DECISION_APPROVED, CONST.MODERATION.MODERATOR_DECISION_PENDING].some((item) => item === latestDecision) && !isActionPendingRemove) {
             setIsHidden(true);
             return;
         }
         setIsHidden(false);
-    }, [latestDecision, action, setIsHidden]);
+    }, [latestDecision, actionName, isActionPendingRemove, reportActionID, setIsHidden]);
 
     const toggleContextMenuFromActiveReportAction = () => {
         setIsContextMenuActive(isActiveReportAction(action.reportActionID));
