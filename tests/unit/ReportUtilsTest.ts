@@ -25147,6 +25147,15 @@ describe('ReportUtils', () => {
     });
 
     describe('shouldHideSingleReportField', () => {
+        it.each([
+            {values: ['A', 'B'], hidden: false},
+            {values: [], hidden: true},
+        ])('handles missing disabledOptions with values $values', ({values, hidden}) => {
+            const reportField = createMock<PolicyReportField>({type: CONST.REPORT_FIELD_TYPES.LIST, values});
+            const isHidden = shouldHideSingleReportField(reportField);
+            expect(isHidden).toBe(hidden);
+        });
+
         it('should return true if report field has title type', () => {
             const reportField = createMock<PolicyReportField>({
                 fieldID: CONST.REPORT_FIELD_TITLE_FIELD_ID,

@@ -480,15 +480,17 @@ function updateReportFieldListValueEnabled({policy, reportFieldID, valueIndexes,
     const reportField = previousFieldList[fieldKey];
 
     const updatedReportField = cloneDeep(reportField);
+    const disabledOptions = updatedReportField.disabledOptions ?? [];
 
     for (const valueIndex of valueIndexes) {
-        updatedReportField.disabledOptions[valueIndex] = !enabled;
+        disabledOptions[valueIndex] = !enabled;
         const shouldResetDefaultValue = !enabled && reportField.defaultValue === reportField.values.at(valueIndex);
 
         if (shouldResetDefaultValue) {
             updatedReportField.defaultValue = '';
         }
     }
+    updatedReportField.disabledOptions = disabledOptions;
 
     // We are using the offline pattern A (optimistic without feedback)
     const onyxData: OnyxData<typeof ONYXKEYS.COLLECTION.POLICY> = {
@@ -535,7 +537,7 @@ function addReportFieldListValue({policy, reportFieldID, valueName}: AddReportFi
     const updatedReportField = cloneDeep(reportField);
 
     updatedReportField.values.push(valueName);
-    updatedReportField.disabledOptions.push(false);
+    updatedReportField.disabledOptions = [...(updatedReportField.disabledOptions ?? []), false];
 
     // We are using the offline pattern A (optimistic without feedback)
     const onyxData: OnyxData<typeof ONYXKEYS.COLLECTION.POLICY> = {
@@ -580,6 +582,7 @@ function removeReportFieldListValue({policy, reportFieldID, valueIndexes}: Remov
     const reportFieldKey = ReportUtils.getReportFieldKey(reportFieldID);
     const reportField = previousFieldList[reportFieldKey];
     const updatedReportField = cloneDeep(reportField);
+    const disabledOptions = updatedReportField.disabledOptions ?? [];
 
     for (const valueIndex of valueIndexes.sort((a, b) => b - a)) {
         const shouldResetDefaultValue = reportField.defaultValue === reportField.values.at(valueIndex);
@@ -589,8 +592,9 @@ function removeReportFieldListValue({policy, reportFieldID, valueIndexes}: Remov
         }
 
         updatedReportField.values.splice(valueIndex, 1);
-        updatedReportField.disabledOptions.splice(valueIndex, 1);
+        disabledOptions.splice(valueIndex, 1);
     }
+    updatedReportField.disabledOptions = disabledOptions;
 
     // We are using the offline pattern A (optimistic without feedback)
     const onyxData: OnyxData<typeof ONYXKEYS.COLLECTION.POLICY> = {

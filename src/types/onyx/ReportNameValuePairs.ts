@@ -199,7 +199,7 @@ type ReportNameValuePairs = OnyxCommon.OnyxValueWithOfflineFeedback<{
         externalIDs: string[];
 
         /** Collection of flags that state whether drop down field options are disabled */
-        disabledOptions: boolean[];
+        disabledOptions?: boolean[];
 
         /** Is this a tax user defined report field */
         isTax: boolean;

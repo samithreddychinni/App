@@ -5890,7 +5890,10 @@ function getAvailableReportFields(report: OnyxEntry<Report>, policyReportFields:
 
     // If the report is settled, we don't want to show any new field that gets added to the policy.
     if (reportIsSettled) {
-        return reportFields;
+        return reportFields.map((field) => ({
+            ...field,
+            disabledOptions: field.disabledOptions ?? [],
+        }));
     }
 
     // If the report is unsettled, we want to merge the new fields that get added to the policy with the fields that
@@ -5906,10 +5909,12 @@ function getAvailableReportFields(report: OnyxEntry<Report>, policyReportFields:
                 ...field,
                 ...(policyReportField
                     ? {
-                          disabledOptions: policyReportField.disabledOptions,
+                          disabledOptions: policyReportField.disabledOptions ?? field.disabledOptions ?? [],
                           values: policyReportField.values,
                       }
-                    : {}),
+                    : {
+                          disabledOptions: field.disabledOptions ?? [],
+                      }),
             };
         }
 
@@ -15513,7 +15518,7 @@ function isWorkspaceMemberLeavingWorkspaceRoom(report: OnyxEntry<Report>, isPoli
  * calling `disabledOptions.some(...)`, which would return false for those fields and hide them.
  */
 function hasEnabledListValue(reportField: PolicyReportField): boolean {
-    return reportField.values.some((_, index) => !reportField.disabledOptions.at(index));
+    return reportField.values.some((_, index) => !reportField.disabledOptions?.at(index));
 }
 
 function shouldHideSingleReportField(reportField: PolicyReportField) {
