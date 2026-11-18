@@ -293,4 +293,23 @@ describe('ActiveClientManager', () => {
         expect(clientID).toBeDefined();
         expect(tab.isClientTheLeader()).toBe(true);
     });
+
+    it('stops retrying when a lock request rejects before being granted', async () => {
+        // Given a Web Locks environment where requests reject before grant
+        const mockRequest = jest.fn().mockRejectedValue(new DOMException('Lock request failed', 'AbortError'));
+        Object.defineProperty(navigator, 'locks', {
+            value: {request: mockRequest},
+            configurable: true,
+        });
+
+        const tab = openTab();
+
+        // When the tab initializes
+        tab.init();
+        await waitForLocks();
+
+        // Then it does not trigger recursive retry loops and does not become leader
+        expect(mockRequest).toHaveBeenCalledTimes(1);
+        expect(tab.isClientTheLeader()).toBe(false);
+    });
 });

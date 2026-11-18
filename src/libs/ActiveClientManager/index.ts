@@ -153,8 +153,13 @@ const requestLeaderLock = (shouldSteal: boolean) => {
             if (requestID !== leaderLockRequestID) {
                 return;
             }
+            const wasHoldingLock = isHoldingLeaderLock;
             isHoldingLeaderLock = false;
+            isStealingLeaderLock = false;
             notifyIfBecameLeader();
+            if (!wasHoldingLock) {
+                return;
+            }
             requestLeaderLock(false);
         });
 };
