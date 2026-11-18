@@ -1068,7 +1068,10 @@ describe('WorkspaceMemberDetailsPage', () => {
         await waitForBatchedUpdatesWithAct();
     });
 
-    it('navigates to chat history using Navigation.navigate instead of revealRouteBeforeDismissingModal', async () => {
+    it('navigates to chat history by dismissing modal before navigating', async () => {
+        const dismissSpy = jest.spyOn(Navigation, 'dismissModal').mockImplementation((options) => {
+            options?.afterTransition?.();
+        });
         const navigateSpy = jest.spyOn(Navigation, 'navigate').mockImplementation(() => {});
         const revealSpy = jest.spyOn(Navigation, 'revealRouteBeforeDismissingModal').mockImplementation(() => {});
 
@@ -1077,7 +1080,8 @@ describe('WorkspaceMemberDetailsPage', () => {
         await waitForBatchedUpdatesWithAct();
         fireEvent.press(await screen.findByTestId('member-chat-history-menu-item'));
 
-        // Then Navigation.navigate is called with the chat search route, preserving navigation history
+        // Then Navigation.dismissModal is called with afterTransition navigating to chat search
+        expect(dismissSpy).toHaveBeenCalledTimes(1);
         expect(navigateSpy).toHaveBeenCalledTimes(1);
         expect(revealSpy).not.toHaveBeenCalled();
         unmount();
