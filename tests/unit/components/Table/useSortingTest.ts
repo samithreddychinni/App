@@ -112,4 +112,31 @@ describe('useSorting middleware', () => {
         expect(secondResult).not.toBe(firstResult);
         expect(secondResult.map((item) => item.name)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta']);
     });
+
+    it('applies user sorting on narrow layouts', () => {
+        // Given a table in narrow layout
+        const items = createItems();
+        const {result} = renderHook(() =>
+            useSorting<TestItem>({
+                compareItems: compareByName,
+                initialSortColumn: NAME_COLUMN_KEY,
+                initialSortOrder: CONST.SEARCH.SORT_ORDER.ASC,
+                shouldUseNarrowTableLayout: true,
+                columnKeys: [NAME_COLUMN_KEY],
+            }),
+        );
+
+        // When the user toggles the column sorting on narrow layout
+        act(() => {
+            result.current.methods.toggleColumnSorting(NAME_COLUMN_KEY);
+        });
+
+        // Then activeSorting updates to descending and sorts the items accordingly
+        expect(result.current.activeSorting).toEqual({
+            columnKey: NAME_COLUMN_KEY,
+            order: CONST.SEARCH.SORT_ORDER.DESC,
+        });
+        const sortedItems = result.current.middleware(items);
+        expect(sortedItems.map((item) => item.name)).toEqual(['Charlie', 'Bravo', 'Alpha']);
+    });
 });

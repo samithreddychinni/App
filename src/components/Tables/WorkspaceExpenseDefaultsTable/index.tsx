@@ -133,7 +133,6 @@ function WorkspaceExpenseDefaultsTable({rulesData, selectionEnabled, selectedKey
             compareItems={compareItems}
             isItemInSearch={isItemInSearch}
             initialSortColumn="condition"
-            narrowLayoutSortColumn="condition"
             title={translate('workspace.rules.tabs.expenseDefaults')}
         >
             <Table.ListHeader>{tableHeaderComponent}</Table.ListHeader>
