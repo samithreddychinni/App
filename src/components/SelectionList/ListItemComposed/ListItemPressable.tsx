@@ -141,7 +141,7 @@ function ListItemPressable<TItem extends ListItem>({
                         return;
                     }
                     // The list's Enter shortcut stands aside while a row with such a role is focused, so the row presses itself.
-                    if (shouldPreventEnterKeySubmit && !isRoleHandlingOwnEnter(role) && e && 'key' in e && e.key === CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey) {
+                    if (e && 'key' in e && e.key === CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey && (!isRoleHandlingOwnEnter(role) || e.shiftKey || e.metaKey || e.ctrlKey)) {
                         return;
                     }
                     onSelectRow(item, undefined, e);

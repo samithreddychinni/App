@@ -9,6 +9,7 @@ import CONST from '@src/CONST';
 
 import {View} from 'react-native';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
 jest.mock('@hooks/useHover', () => jest.fn());
 
 const mockedUseHover = jest.mocked(useHover);
@@ -200,5 +201,83 @@ describe('ListItemPressable', () => {
 
         // Then children only see the hover when hover styling is enabled
         expect(screen.getByTestId(`hovered-${expectedHovered}`)).toBeVisible();
+    });
+
+    it('does not select an option row on Shift+Enter when shouldPreventEnterKeySubmit is false', () => {
+        const onSelectRow = jest.fn();
+        render(
+            <ListItemComposed
+                item={{keyForList: '1', text: 'Participant'}}
+                shouldPreventEnterKeySubmit={false}
+                onSelectRow={onSelectRow}
+                shouldShowTooltip={false}
+                isFocused
+            />,
+        );
+
+        // When Shift+Enter is pressed on the focused row (keydown rejected by selectRowOnEnterKey)
+        fireEvent(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), 'keyDown', {
+            nativeEvent: {key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey, shiftKey: true},
+        });
+        // And React Native Web triggers press on keyup
+        fireEvent.press(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), {
+            key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey,
+            shiftKey: true,
+        });
+
+        // Then the row must not be selected
+        expect(onSelectRow).not.toHaveBeenCalled();
+    });
+
+    it('does not select an option row on Shift+Enter even if Shift is released before Enter keyup', () => {
+        const onSelectRow = jest.fn();
+        render(
+            <ListItemComposed
+                item={{keyForList: '1', text: 'Participant'}}
+                shouldPreventEnterKeySubmit={false}
+                onSelectRow={onSelectRow}
+                shouldShowTooltip={false}
+                isFocused
+            />,
+        );
+
+        // Given Shift+Enter keydown (Shift is held)
+        fireEvent(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), 'keyDown', {
+            nativeEvent: {key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey, shiftKey: true},
+        });
+        // When Shift is released before Enter keyup (so shiftKey is false on keyup event)
+        fireEvent.press(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), {
+            key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey,
+            shiftKey: false,
+        });
+
+        // Then onSelectRow must still not be called
+        expect(onSelectRow).not.toHaveBeenCalled();
+    });
+
+    it('selects an option row exactly once on plain Enter when shouldPreventEnterKeySubmit is false', () => {
+        const onSelectRow = jest.fn();
+        render(
+            <ListItemComposed
+                item={{keyForList: '1', text: 'Participant'}}
+                shouldPreventEnterKeySubmit={false}
+                onSelectRow={onSelectRow}
+                shouldShowTooltip={false}
+                isFocused
+            />,
+        );
+
+        // When plain Enter is pressed on the focused row (keydown)
+        fireEvent(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), 'keyDown', {
+            nativeEvent: {key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey},
+            preventDefault: jest.fn(),
+        });
+        // And React Native Web triggers press on keyup
+        fireEvent.press(screen.getByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}1`), {
+            key: CONST.KEYBOARD_SHORTCUTS.ENTER.shortcutKey,
+        });
+
+        // Then onSelectRow must be called exactly once
+        expect(onSelectRow).toHaveBeenCalledTimes(1);
     });
 });
