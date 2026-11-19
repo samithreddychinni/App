@@ -1,3 +1,5 @@
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+
 import getStateForDynamicRoute from '@libs/Navigation/helpers/dynamicRoutesUtils/getStateForDynamicRoute';
 
 import type * as Routes from '@src/ROUTES';
@@ -15,6 +17,13 @@ jest.mock('@libs/Navigation/linkingConfig/config', () => {
                 path: actualDynamicRoutes.TWO_FACTOR_AUTH_ROOT.path,
                 routeNames: ['Root'],
             },
+            AgentEditNavigator: {
+                path: actualDynamicRoutes.AGENT_EDIT.path,
+                routeNames: ['AgentEditWrapper', 'AgentEditScreen'],
+                parse: {
+                    accountID: Number,
+                },
+            },
         },
     };
 });
@@ -22,6 +31,7 @@ jest.mock('@libs/Navigation/linkingConfig/config', () => {
 const KEY_TEST = 'VERIFY_ACCOUNT';
 const KEY_SINGLE = 'TWO_FACTOR_AUTH_ROOT';
 const KEY_UNKNOWN = 'TWO_FACTOR_AUTH_VERIFY';
+const KEY_AGENT_EDIT = 'AGENT_EDIT';
 
 describe('getStateForDynamicRoute', () => {
     it('should build correctly nested state for multi-level route', () => {
@@ -159,6 +169,28 @@ describe('getStateForDynamicRoute', () => {
         it('keeps defined params and drops undefined ones in mixed scenario', () => {
             const path = `/r/12345/${DYNAMIC_ROUTES.VERIFY_ACCOUNT.path}?country=US`;
             const parentParams = {reportID: '12345', extraneous: undefined};
+            const result = getStateForDynamicRoute(path, KEY_TEST, parentParams);
+
+            const rootRoute = result.routes.at(0);
+            const leafRoute = rootRoute && 'state' in rootRoute && rootRoute.state ? rootRoute.state.routes.at(0) : undefined;
+            expect(leafRoute && 'params' in leafRoute ? leafRoute.params : undefined).toEqual({reportID: '12345', country: 'US'});
+        });
+    });
+
+    describe('routeConfig.parse handling', () => {
+        it('parses string parameters into numbers when parse function is defined in routeConfig', () => {
+            const path = `/settings/agents/12345/edit`;
+            const parentParams = {accountID: '12345'};
+            const result = getStateForDynamicRoute(path, KEY_AGENT_EDIT, parentParams);
+
+            const rootRoute = result.routes.at(0);
+            const leafRoute = rootRoute && 'state' in rootRoute && rootRoute.state ? rootRoute.state.routes.at(0) : undefined;
+            expect(leafRoute && 'params' in leafRoute ? leafRoute.params : undefined).toEqual({accountID: 12345});
+        });
+
+        it('leaves parameters as strings when parse function is not configured', () => {
+            const path = `/some/path/${DYNAMIC_ROUTES.VERIFY_ACCOUNT.path}?country=US`;
+            const parentParams = {reportID: '12345'};
             const result = getStateForDynamicRoute(path, KEY_TEST, parentParams);
 
             const rootRoute = result.routes.at(0);

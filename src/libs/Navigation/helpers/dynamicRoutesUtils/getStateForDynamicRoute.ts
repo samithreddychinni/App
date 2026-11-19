@@ -1,3 +1,4 @@
+import type {RouteConfig} from '@libs/Navigation/helpers/createNormalizedConfigs';
 import {dynamicTabScreensByHost, normalizedConfigs, screensWithOnyxTabNavigator} from '@libs/Navigation/linkingConfig/config';
 
 import {DYNAMIC_ROUTES} from '@src/ROUTES';
@@ -43,14 +44,14 @@ function getParamsFromQuery(query: string | undefined): Record<string, string> |
 }
 
 /**
- * Looks up the navigation screen hierarchy (routeNames) for a given dynamic route suffix.
+ * Looks up the navigation route configuration for a given dynamic route suffix.
  *
  * @private - Internal helper. Do not export or use outside this file.
  */
-function getRouteNamesForDynamicRoute(dynamicRouteName: DynamicRouteSuffix): string[] | null {
+function getRouteConfigForDynamicRoute(dynamicRouteName: DynamicRouteSuffix): RouteConfig | null {
     for (const [, config] of configEntries) {
         if (config.path === dynamicRouteName) {
-            return config.routeNames;
+            return config;
         }
     }
 
@@ -58,7 +59,7 @@ function getRouteNamesForDynamicRoute(dynamicRouteName: DynamicRouteSuffix): str
 }
 
 function getStateForDynamicRoute(path: string, dynamicRouteName: keyof typeof DYNAMIC_ROUTES, parentRouteParams?: Record<string, unknown>, activeTabPath?: string) {
-    const routeConfig = getRouteNamesForDynamicRoute(DYNAMIC_ROUTES[dynamicRouteName].path);
+    const routeConfig = getRouteConfigForDynamicRoute(DYNAMIC_ROUTES[dynamicRouteName].path);
     const [, query] = splitPathAndQuery(path);
     const params = getParamsFromQuery(query);
 
@@ -76,6 +77,15 @@ function getStateForDynamicRoute(path: string, dynamicRouteName: keyof typeof DY
         if (currentIndex === routes.length - 1) {
             const mergedParams = {...(parentRouteParams ?? {}), ...(params ?? {})};
             const cleanedParams = Object.fromEntries(Object.entries(mergedParams).filter(([, v]) => v !== undefined));
+
+            if (routeConfig.parse) {
+                for (const [paramName, parser] of Object.entries(routeConfig.parse)) {
+                    if (typeof parser === 'function' && typeof cleanedParams[paramName] === 'string') {
+                        cleanedParams[paramName] = parser(cleanedParams[paramName]);
+                    }
+                }
+            }
+
             const paramsSpread = cleanedParams && Object.keys(cleanedParams).length > 0 ? {params: cleanedParams} : {};
 
             // If this leaf hosts a tab navigator and we know which tab was active from the URL,
@@ -109,7 +119,7 @@ function getStateForDynamicRoute(path: string, dynamicRouteName: keyof typeof DY
     };
 
     // Start building from the first route
-    const rootRoute = {routes: [buildNestedState(routeConfig, 0)]};
+    const rootRoute = {routes: [buildNestedState(routeConfig.routeNames, 0)]};
 
     return rootRoute;
 }
