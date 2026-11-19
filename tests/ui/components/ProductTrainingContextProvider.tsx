@@ -17,10 +17,17 @@ import type {Ref} from 'react';
 import {createRef, useImperativeHandle} from 'react';
 import Onyx from 'react-native-onyx';
 
+import getPlatform from '@libs/getPlatform';
+
 import * as TestHelper from '../../utils/TestHelper';
 import waitForBatchedUpdatesWithAct from '../../utils/waitForBatchedUpdatesWithAct';
 import wrapOnyxWithWaitForBatchedUpdates from '../../utils/wrapOnyxWithWaitForBatchedUpdates';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+jest.mock('@libs/getPlatform', () => ({
+    __esModule: true,
+    default: jest.fn(() => 'web'),
+}));
 jest.mock('@hooks/useResponsiveLayout', () => ({
     __esModule: true,
     default: jest.fn(),
@@ -76,6 +83,7 @@ describe('ProductTrainingContextProvider', () => {
         wrapOnyxWithWaitForBatchedUpdates(Onyx);
         setHasRadio(true);
         Onyx.merge(ONYXKEYS.IS_LOADING_APP, false);
+        jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.WEB);
         signUpWithTestUser();
     });
 
@@ -562,6 +570,123 @@ describe('ProductTrainingContextProvider', () => {
 
             // Then the tooltip hides, because product training must not show on behalf of another account
             expect(ref.current?.shouldShowProductTrainingTooltip).toBe(false);
+        });
+    });
+
+    describe('ACCOUNT_MOVED_TO_TOP_BAR Tooltip', () => {
+        const tooltipName = CONST.PRODUCT_TRAINING_TOOLTIP_NAMES.ACCOUNT_MOVED_TO_TOP_BAR;
+        const personalPolicyId = 'policy_personal_test';
+
+        it('shows on native mobile for existing users whose personal policy was created before the cutoff date', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.IOS);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${personalPolicyId}`, {
+                id: personalPolicyId,
+                name: "Test's Personal Policy",
+                type: CONST.POLICY.TYPE.PERSONAL,
+                created: '2026-08-01 12:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(true);
+        });
+
+        it('does not show on web even if the user is an existing user', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.WEB);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${personalPolicyId}`, {
+                id: personalPolicyId,
+                name: "Test's Personal Policy",
+                type: CONST.POLICY.TYPE.PERSONAL,
+                created: '2026-08-01 12:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(false);
+        });
+
+        it('does not show on native mobile for new users created on or after the cutoff date', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.IOS);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${personalPolicyId}`, {
+                id: personalPolicyId,
+                name: "Test's Personal Policy",
+                type: CONST.POLICY.TYPE.PERSONAL,
+                created: '2026-11-15 12:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(false);
+        });
+
+        it('does not show when personal policy is missing or has invalid date', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.IOS);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}some_workspace`, {
+                id: 'some_workspace',
+                name: 'Workspace',
+                type: CONST.POLICY.TYPE.TEAM,
+                created: '2026-08-01 12:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(false);
+        });
+
+        it('retains eligibility for existing infrequent users who return after 60+ days without dismissal', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.ANDROID);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${personalPolicyId}`, {
+                id: personalPolicyId,
+                name: "Test's Personal Policy",
+                type: CONST.POLICY.TYPE.PERSONAL,
+                created: '2025-01-01 00:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(true);
+        });
+
+        it('hides once dismissed and stores the dismissal in Onyx', async () => {
+            jest.mocked(getPlatform).mockReturnValue(CONST.PLATFORM.IOS);
+            Onyx.merge(ONYXKEYS.NVP_ONBOARDING, {hasCompletedGuidedSetupFlow: true});
+            Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${personalPolicyId}`, {
+                id: personalPolicyId,
+                name: "Test's Personal Policy",
+                type: CONST.POLICY.TYPE.PERSONAL,
+                created: '2026-08-01 12:00:00',
+            });
+            await waitForBatchedUpdatesWithAct();
+
+            const {result, rerender} = renderHook(() => useProductTrainingContext(tooltipName), {wrapper});
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(true);
+
+            result.current.hideProductTrainingTooltip();
+            await waitForBatchedUpdatesWithAct();
+            rerender({});
+
+            expect(result.current.shouldShowProductTrainingTooltip).toBe(false);
+
+            const dismissedTooltipsOnyxState = await new Promise((resolve) => {
+                const connection = Onyx.connect({
+                    key: ONYXKEYS.NVP_DISMISSED_PRODUCT_TRAINING,
+                    callback: (dismissedTooltips) => {
+                        connection.unsubscribe();
+                        resolve(dismissedTooltips);
+                    },
+                });
+            });
+            expect(dismissedTooltipsOnyxState).toHaveProperty(tooltipName);
         });
     });
 });

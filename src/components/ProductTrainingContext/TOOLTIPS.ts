@@ -32,6 +32,7 @@ type ShouldShowConditionProps = {
     isUserPolicyAdmin: boolean;
     hasBeenAddedToNudgeMigration: boolean;
     isUserInPaidPolicy: boolean;
+    isExistingUserOnMobile: boolean;
 };
 
 type TooltipData = {
@@ -113,7 +114,7 @@ const TOOLTIPS: Record<ProductTrainingTooltipName, TooltipData> = {
         onHideTooltip: (isDismissedUsingCloseButton = false) => dismissProductTraining(ACCOUNT_MOVED_TO_TOP_BAR, isDismissedUsingCloseButton),
         name: ACCOUNT_MOVED_TO_TOP_BAR,
         priority: 1700,
-        shouldShow: () => true,
+        shouldShow: ({isExistingUserOnMobile}) => isExistingUserOnMobile,
     },
     [CONNECTIONS_MOVED]: {
         content: 'productTrainingTooltip.connectionsMoved',

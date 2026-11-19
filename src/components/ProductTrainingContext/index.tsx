@@ -11,6 +11,7 @@ import useSidePanelState from '@hooks/useSidePanelState';
 import useTheme from '@hooks/useTheme';
 import useThemeStyles from '@hooks/useThemeStyles';
 
+import getPlatform from '@libs/getPlatform';
 import {getActiveAdminWorkspaces, getActiveEmployeeWorkspaces, hasAnyPaidPolicy} from '@libs/PolicyUtils';
 import isProductTrainingElementDismissed, {hasDismissalExpired} from '@libs/TooltipUtils';
 
@@ -20,6 +21,8 @@ import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type ChildrenProps from '@src/types/utils/ChildrenProps';
 import isLoadingOnyxValue from '@src/types/utils/isLoadingOnyxValue';
+
+import {fromZonedTime} from 'date-fns-tz';
 
 import {activeModalKindSelector} from '@selectors/Modal';
 import {hasCompletedGuidedSetupFlowSelector} from '@selectors/Onboarding';
@@ -119,6 +122,12 @@ function ProductTrainingContextProvider({children}: ChildrenProps) {
 
     const isUserInPaidPolicy = !(!allPolicies || !currentUserLogin || isLoadingOnyxValue(allPoliciesMetadata, currentUserLoginMetadata)) && hasAnyPaidPolicy(allPolicies);
 
+    const personalPolicy = Object.values(allPolicies ?? {}).find((policy) => policy?.type === CONST.POLICY.TYPE.PERSONAL);
+    const personalPolicyCreatedTime = personalPolicy?.created ? fromZonedTime(personalPolicy.created, 'UTC').getTime() : NaN;
+    const cutoffTime = fromZonedTime(CONST.ACCOUNT_MOVED_TO_TOP_BAR_CUTOFF_DATE, 'UTC').getTime();
+    const isExistingUser = !isLoadingOnyxValue(allPoliciesMetadata) && !Number.isNaN(personalPolicyCreatedTime) && personalPolicyCreatedTime < cutoffTime;
+    const isExistingUserOnMobile = getPlatform() !== CONST.PLATFORM.WEB && isExistingUser;
+
     const shouldTooltipBeVisible = (tooltipName: ProductTrainingTooltipName) => {
         if (isLoadingOnyxValue(isOnboardingCompletedMetadata) || isLoadingApp) {
             return false;
@@ -166,6 +175,7 @@ function ProductTrainingContextProvider({children}: ChildrenProps) {
             isUserPolicyAdmin,
             hasBeenAddedToNudgeMigration,
             isUserInPaidPolicy,
+            isExistingUserOnMobile,
         });
     };
 

@@ -10349,6 +10349,8 @@ const CONST = {
         SEVEN_DAYS: 7 * 24 * 60 * 60 * 1000,
     },
 
+    ACCOUNT_MOVED_TO_TOP_BAR_CUTOFF_DATE: '2026-10-30',
+
     INBOX_TAB_STALE_UNREAD_MONTHS: 3,
     CHANGE_POLICY_TRAINING_MODAL: 'changePolicyModal',
     AGENTS_RULES_BANNER: 'agentsRulesBanner',

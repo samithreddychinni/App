@@ -11,6 +11,7 @@ import useOnyx from '@hooks/useOnyx';
 import useResponsiveLayout from '@hooks/useResponsiveLayout';
 import useThemeStyles from '@hooks/useThemeStyles';
 
+import getPlatform from '@libs/getPlatform';
 import interceptAnonymousUser from '@libs/interceptAnonymousUser';
 import Navigation from '@libs/Navigation/Navigation';
 
@@ -47,9 +48,11 @@ function AccountAvatarButtonContent() {
     const isFocused = useIsFocused();
     const isSelected = useRoute().name === SCREENS.SETTINGS.ROOT;
 
+    const isMobile = getPlatform() !== CONST.PLATFORM.WEB;
+
     const {shouldShowProductTrainingTooltip, renderProductTrainingTooltip, hideProductTrainingTooltip} = useProductTrainingContext(
         CONST.PRODUCT_TRAINING_TOOLTIP_NAMES.ACCOUNT_MOVED_TO_TOP_BAR,
-        isFocused && !isAnonymousUser,
+        isFocused && !isAnonymousUser && isMobile,
     );
 
     const navigateToAccount = () => {
