@@ -3183,6 +3183,18 @@ describe('actions/IOU/BulkEdit', () => {
 
             const transactionKey = `${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}` as const;
             const anyError: unknown = expect.anything();
+            const threadActionsKey = `${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${transactionThreadReportID}`;
+            const optimisticActionsUpdate = writeSpy.mock.calls.at(0)?.[2]?.optimisticData?.find((update) => update.key === threadActionsKey);
+            const reportActionValues = Object.values((optimisticActionsUpdate?.value ?? {}) as Record<string, OnyxTypes.ReportAction>);
+            const genericReportAction = reportActionValues.find((action) => action.actionName === CONST.REPORT.ACTIONS.TYPE.MODIFIED_EXPENSE);
+            expect(genericReportAction?.originalMessage).toEqual(
+                expect.objectContaining({
+                    category: 'Meals',
+                }),
+            );
+            expect(genericReportAction?.originalMessage).not.toHaveProperty('newAttendees');
+            expect(genericReportAction?.originalMessage).not.toHaveProperty('oldAttendees');
+
             expect(writeSpy.mock.calls.at(0)?.[2]).toEqual(
                 expect.objectContaining({
                     optimisticData: expect.arrayContaining([

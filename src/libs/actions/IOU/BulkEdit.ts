@@ -513,6 +513,7 @@ function updateMultipleMoneyRequests({
         // Attendees are kept apart from the other changes because they are sent by a different command.
         const {attendees: updatedAttendees, ...genericChanges} = transactionChanges;
         const hasAttendeesUpdate = !!serializedAttendees;
+        const hasGenericUpdates = Object.keys(updates).length > 0;
 
         // Pending fields for the transaction
         const pendingFields: OnyxTypes.Transaction['pendingFields'] = Object.fromEntries(Object.keys(genericChanges).map((field) => [field, CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE]));
@@ -723,9 +724,13 @@ function updateMultipleMoneyRequests({
             }
         }
 
+        const actionTransactionChanges = hasGenericUpdates && hasAttendeesUpdate ? genericChanges : transactionChanges;
+
         // To build proper offline update message, we need to include the currency
         const optimisticTransactionChanges =
-            transactionChanges?.amount !== undefined && !transactionChanges?.currency ? {...transactionChanges, currency: getCurrency(transaction)} : transactionChanges;
+            actionTransactionChanges?.amount !== undefined && !actionTransactionChanges?.currency
+                ? {...actionTransactionChanges, currency: getCurrency(transaction)}
+                : actionTransactionChanges;
 
         // Build optimistic modified expense report action
         const optimisticReportAction = buildOptimisticModifiedExpenseReportAction(
@@ -735,7 +740,7 @@ function updateMultipleMoneyRequests({
             isFromExpenseReport,
             transactionPolicy,
             delegateAccountID,
-            updatedTransaction,
+            hasGenericUpdates && hasAttendeesUpdate ? genericUpdatedTransaction : updatedTransaction,
         );
 
         const reportIDForTracking = iouReport?.reportID;
@@ -910,8 +915,6 @@ function updateMultipleMoneyRequests({
             successData: attendeesSuccessData,
             failureData: attendeesFailureData,
         };
-
-        const hasGenericUpdates = Object.keys(updates).length > 0;
 
         if (hasGenericUpdates) {
             writeBulkEditMoneyRequest(
