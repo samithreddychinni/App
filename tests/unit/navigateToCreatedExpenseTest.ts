@@ -1,3 +1,10 @@
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: () => false,
+    },
+}));
+
 import {setActiveTransactionIDs} from '@libs/actions/TransactionThreadNavigation';
 import type isReportOpenInRHP from '@libs/Navigation/helpers/isReportOpenInRHP';
 import navigateToCreatedExpense from '@libs/Navigation/helpers/navigateToCreatedExpense';
@@ -35,6 +42,9 @@ jest.mock('@libs/ReportUtils', () => ({
 }));
 jest.mock('@libs/actions/TransactionThreadNavigation', () => ({
     setActiveTransactionIDs: jest.fn(() => Promise.resolve()),
+    CAROUSEL_SOURCE: {
+        createdExpense: 'createdExpense',
+    },
 }));
 
 jest.mock('@libs/Navigation/Navigation', () => ({
@@ -135,7 +145,7 @@ describe('navigateToCreatedExpense', () => {
 
         // Then the thread opens in the RHP on top of its report, the same as opening it from the report preview
         const reportRoute = ROUTES.REPORT_WITH_ID.getRoute('iou-1', undefined, undefined, '');
-        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2']);
+        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2'], {source: 'createdExpense'});
         expect(Navigation.navigate).toHaveBeenCalledTimes(2);
         expect(Navigation.navigate).toHaveBeenNthCalledWith(1, reportRoute, {forceReplace: false});
         expect(Navigation.navigate).toHaveBeenNthCalledWith(2, ROUTES.SEARCH_REPORT.getRoute({reportID: 'thread-1', backTo: reportRoute}));
@@ -189,7 +199,7 @@ describe('navigateToCreatedExpense', () => {
 
         // And then the expense report opens with the thread on top of it
         const reportRoute = ROUTES.REPORT_WITH_ID.getRoute('iou-1', undefined, undefined, '');
-        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2']);
+        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2'], {source: 'createdExpense'});
         expect(Navigation.navigate).toHaveBeenCalledTimes(2);
         expect(Navigation.navigate).toHaveBeenNthCalledWith(1, reportRoute, {forceReplace: false});
         expect(Navigation.navigate).toHaveBeenNthCalledWith(2, ROUTES.SEARCH_REPORT.getRoute({reportID: 'thread-1', backTo: reportRoute}));
@@ -290,6 +300,7 @@ describe('navigateToCreatedExpense', () => {
         await waitForBatchedUpdates();
 
         // Then the transaction thread opens in the Spend RHP
+        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1'], {source: 'createdExpense'});
         expect(Navigation.navigate).toHaveBeenCalledTimes(1);
         expect(Navigation.navigate).toHaveBeenCalledWith(ROUTES.SEARCH_REPORT.getRoute({reportID: 'thread-1', backTo: ''}), {forceReplace: false});
     });
@@ -358,7 +369,7 @@ describe('navigateToCreatedExpense', () => {
         await waitForBatchedUpdates();
 
         // Then the arrows cover the report's other expenses, but skip the one being deleted
-        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2']);
+        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-1', 'txn-2'], {source: 'createdExpense'});
     });
 
     it('should seed the expenses oldest first rather than in creation order', async () => {
@@ -379,7 +390,7 @@ describe('navigateToCreatedExpense', () => {
         await waitForBatchedUpdates();
 
         // Then the arrows follow the dates, so "Next" from the new expense opens the October one
-        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-sep', 'txn-new', 'txn-oct']);
+        expect(setActiveTransactionIDs).toHaveBeenCalledWith(['txn-sep', 'txn-new', 'txn-oct'], {source: 'createdExpense'});
     });
 
     it('should open the expense report without the replaced RHP backTo, so deleting the report falls back to its chat', async () => {

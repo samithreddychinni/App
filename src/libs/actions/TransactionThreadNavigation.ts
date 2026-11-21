@@ -54,6 +54,9 @@ const CAROUSEL_SOURCE = {
 
     /** The duplicate-review flow */
     duplicateReview: (transactionID: string | undefined) => `duplicateReview:${transactionID}`,
+
+    /** The newly created expense navigation flow */
+    createdExpense: 'createdExpense',
 } as const;
 
 let lastSetIDs: string[] | null = null;

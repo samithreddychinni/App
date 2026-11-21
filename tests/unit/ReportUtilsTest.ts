@@ -1,6 +1,13 @@
 import {beforeAll} from '@jest/globals';
 import {act, renderHook} from '@testing-library/react-native';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: () => false,
+    },
+}));
+
 /* eslint-disable @typescript-eslint/naming-convention */
 import type {LocaleContextProps, LocalizedTranslate} from '@components/LocaleContextProvider';
 import type {PersonalDetailsByLogin} from '@components/PersonalDetailsByLoginProvider';
@@ -33114,6 +33121,13 @@ describe('isReportTransactionThreadNew', () => {
         // When checking it with the parent data passed in
         // Then it is a transaction thread, without reading the parent from Onyx
         expect(isReportTransactionThreadNew(thread, {type: CONST.REPORT.TYPE.EXPENSE}, buildIOUAction(CONST.IOU.REPORT_ACTION_TYPE.CREATE))).toBe(true);
+    });
+
+    it('is true for an invoice transaction thread under an invoice report', () => {
+        // Given a thread whose parent is an invoice report and whose parent action created the transaction
+        // When checking it with the parent data passed in
+        // Then it is a transaction thread
+        expect(isReportTransactionThreadNew(thread, {type: CONST.REPORT.TYPE.INVOICE}, buildIOUAction(CONST.IOU.REPORT_ACTION_TYPE.CREATE))).toBe(true);
     });
 
     it('is true for a tracked expense thread under the self DM', () => {

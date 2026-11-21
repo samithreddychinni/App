@@ -1,4 +1,4 @@
-import {setActiveTransactionIDs} from '@libs/actions/TransactionThreadNavigation';
+import {CAROUSEL_SOURCE, setActiveTransactionIDs} from '@libs/actions/TransactionThreadNavigation';
 import getIsNarrowLayout from '@libs/getIsNarrowLayout';
 import Navigation, {navigationRef} from '@libs/Navigation/Navigation';
 import {isMoneyRequestReport} from '@libs/ReportUtils';
@@ -73,7 +73,7 @@ function navigateToCreatedExpense({threadReportID, transactionID, iouReportID, r
     const backTo = forceReplace ? getCurrentRouteBackTo() : Navigation.getActiveRoute();
 
     if (!openOnInbox) {
-        setActiveTransactionIDs([transactionID]).then(() => {
+        setActiveTransactionIDs([transactionID], {source: CAROUSEL_SOURCE.createdExpense}).then(() => {
             Navigation.navigate(ROUTES.SEARCH_REPORT.getRoute({reportID: threadReportID, backTo}), {forceReplace});
         });
         return;
@@ -84,7 +84,7 @@ function navigateToCreatedExpense({threadReportID, transactionID, iouReportID, r
     if (getIsNarrowLayout() && iouReportID && hasMultipleReportTransactions) {
         // The expense report is already open full screen, with or without an RHP above it, so the thread goes on top of it.
         if ((!forceReplace && focusedReportID === iouReportID) || (forceReplace && Navigation.getTopmostReportId() === iouReportID)) {
-            setActiveTransactionIDs(openableTransactionIDs);
+            setActiveTransactionIDs(openableTransactionIDs, {source: CAROUSEL_SOURCE.createdExpense});
             const threadBackTo = backTo ?? ROUTES.REPORT_WITH_ID.getRoute(iouReportID);
             Navigation.navigate(ROUTES.SEARCH_REPORT.getRoute({reportID: threadReportID, backTo: threadBackTo}), {forceReplace});
             return;
@@ -97,7 +97,7 @@ function navigateToCreatedExpense({threadReportID, transactionID, iouReportID, r
             const reportBackTo = shouldReplaceOpenReport ? getCurrentRouteBackTo() : Navigation.getActiveRoute();
             const reportRoute = ROUTES.REPORT_WITH_ID.getRoute(iouReportID, undefined, undefined, reportBackTo);
             Navigation.navigate(reportRoute, {forceReplace: shouldReplaceOpenReport});
-            setActiveTransactionIDs(openableTransactionIDs);
+            setActiveTransactionIDs(openableTransactionIDs, {source: CAROUSEL_SOURCE.createdExpense});
             Navigation.navigate(ROUTES.SEARCH_REPORT.getRoute({reportID: threadReportID, backTo: reportRoute}));
         };
 
@@ -126,7 +126,7 @@ function navigateToCreatedExpense({threadReportID, transactionID, iouReportID, r
             // push (never a replace) - it stacks on the report we just opened, not on the previously-open one.
             setNavigationActionToMicrotaskQueue(() => {
                 // Seed every expense on the report, not just this one, so the thread shows the prev/next arrows.
-                setActiveTransactionIDs(openableTransactionIDs).then(() => {
+                setActiveTransactionIDs(openableTransactionIDs, {source: CAROUSEL_SOURCE.createdExpense}).then(() => {
                     Navigation.navigate(ROUTES.SEARCH_REPORT.getRoute({reportID: threadReportID, backTo: Navigation.getActiveRoute()}));
                 });
             });

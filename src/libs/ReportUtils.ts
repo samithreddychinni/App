@@ -2921,6 +2921,19 @@ function isIOURequest(report: OnyxInputOrEntry<Report>): boolean {
 }
 
 /**
+ * An Invoice Request is a thread where the parent report is an Invoice Report and
+ * the parentReportAction is a transaction.
+ */
+function isInvoiceRequest(report: OnyxInputOrEntry<Report>): report is Thread {
+    if (isThread(report)) {
+        const parentReportAction = allReportActions?.[`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${report.parentReportID}`]?.[report.parentReportActionID];
+        const parentReport = getReport(report?.parentReportID, deprecatedAllReports);
+        return isInvoiceReport(parentReport) && !isEmptyObject(parentReportAction) && isTransactionThread(parentReportAction);
+    }
+    return false;
+}
+
+/**
  * @warning Use isTrackExpenseReportNew function instead
  *
  */
@@ -2949,7 +2962,7 @@ function isTrackExpenseReportNew(report: OnyxInputOrEntry<Report>, parentReport:
  */
 function isMoneyRequest(reportOrID: OnyxEntry<Report> | string): boolean {
     const report = typeof reportOrID === 'string' ? (getReport(reportOrID, deprecatedAllReports) ?? null) : reportOrID;
-    return isIOURequest(report) || isExpenseRequest(report);
+    return isIOURequest(report) || isExpenseRequest(report) || isInvoiceRequest(report);
 }
 
 /**
@@ -3068,7 +3081,7 @@ function isReportTransactionThreadNew(
     if (!report?.parentReportID || !report.parentReportActionID || isEmptyObject(parentReportAction)) {
         return false;
     }
-    if (parentReport?.type === CONST.REPORT.TYPE.IOU || parentReport?.type === CONST.REPORT.TYPE.EXPENSE) {
+    if (parentReport?.type === CONST.REPORT.TYPE.IOU || parentReport?.type === CONST.REPORT.TYPE.EXPENSE || parentReport?.type === CONST.REPORT.TYPE.INVOICE) {
         return isTransactionThread(parentReportAction);
     }
     return parentReport?.chatType === CONST.REPORT.CHAT_TYPE.SELF_DM && isTrackExpenseAction(parentReportAction);
@@ -16292,6 +16305,7 @@ export {
     isRootGroupChat,
     isExpenseReport,
     isExpenseRequest,
+    isInvoiceRequest,
     isFinancialReportsForBusinesses,
     isGroupChat,
     isGroupChatAdmin,
