@@ -26,6 +26,12 @@ jest.mock('@react-native-community/netinfo', () => ({
 }));
 
 jest.mock('@src/libs/Log');
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: jest.fn(() => false),
+    },
+}));
 jest.mock('react-native-onyx', () => ({
     connectWithoutView: jest.fn(({key, callback}: {key: string; callback: (value: unknown) => void}) => {
         mockOnyxCallbacks.set(key, callback);
@@ -400,5 +406,81 @@ describe('NetworkState — a successful request clears the INTERNET_UNREACHABLE 
         expect(getIsOffline()).toBe(false);
         jest.runAllTimers();
         expect(reconnectListener).toHaveBeenCalledTimes(1);
+    });
+
+    test('success while NO_RADIO is set clears the hard stop and fires reconnect once (jittered)', async () => {
+        jest.useFakeTimers();
+        const reconnectListener = jest.fn();
+        onReachabilityConfirmed(reconnectListener);
+
+        // OS reports no network interface (radio off)
+        fireNetInfoState({isConnected: false, isInternetReachable: false});
+        expect(getIsOffline()).toBe(true);
+
+        // A read/side-effect command resolves through the FailureTracking middleware
+        await FailureTracking(Promise.resolve({jsonCode: 200}), mockRequest, false);
+
+        expect(getIsOffline()).toBe(false);
+        expect(reconnectListener).not.toHaveBeenCalled();
+        jest.runAllTimers();
+        expect(reconnectListener).toHaveBeenCalledTimes(1);
+    });
+
+    test('success while both NO_RADIO and INTERNET_UNREACHABLE are set clears both hard stops and fires reconnect once (jittered)', async () => {
+        jest.useFakeTimers();
+        const reconnectListener = jest.fn();
+        onReachabilityConfirmed(reconnectListener);
+
+        // Network drops, setting both NO_RADIO and INTERNET_UNREACHABLE
+        fireNetInfoState({isConnected: false, isInternetReachable: false});
+        expect(getIsOffline()).toBe(true);
+
+        await FailureTracking(Promise.resolve({jsonCode: 200}), mockRequest, false);
+
+        expect(getIsOffline()).toBe(false);
+        expect(reconnectListener).not.toHaveBeenCalled();
+        jest.runAllTimers();
+        expect(reconnectListener).toHaveBeenCalledTimes(1);
+    });
+
+    test('success while all three hard stops (NO_RADIO, INTERNET_UNREACHABLE, SUSTAINED_FAILURES) are set clears all and fires reconnect once', async () => {
+        jest.useFakeTimers();
+        const reconnectListener = jest.fn();
+        onReachabilityConfirmed(reconnectListener);
+
+        fireNetInfoState({isConnected: false, isInternetReachable: false});
+        expect(getIsOffline()).toBe(true);
+
+        const connectivityError = new Error(CONST.ERROR.FAILED_TO_FETCH);
+        for (let i = 0; i < CONST.NETWORK.SUSTAINED_FAILURE_THRESHOLD_COUNT - 1; i++) {
+            await expect(FailureTracking(Promise.reject(connectivityError), mockRequest, false)).rejects.toThrow();
+        }
+        jest.advanceTimersByTime(CONST.NETWORK.SUSTAINED_FAILURE_WINDOW_MS + 1);
+        await expect(FailureTracking(Promise.reject(connectivityError), mockRequest, false)).rejects.toThrow();
+        expect(getIsOffline()).toBe(true);
+
+        await FailureTracking(Promise.resolve({jsonCode: 200}), mockRequest, false);
+        expect(getIsOffline()).toBe(false);
+        jest.runAllTimers();
+        expect(reconnectListener).toHaveBeenCalledTimes(1);
+    });
+
+    test('success while shouldForceOffline is active clears NO_RADIO but app remains offline', async () => {
+        jest.useFakeTimers();
+        const reconnectListener = jest.fn();
+        onReachabilityConfirmed(reconnectListener);
+
+        const networkCb = mockOnyxCallbacks.get('network');
+        if (networkCb) {
+            networkCb({shouldForceOffline: true});
+        }
+        fireNetInfoState({isConnected: false, isInternetReachable: false});
+        expect(getIsOffline()).toBe(true);
+
+        await FailureTracking(Promise.resolve({jsonCode: 200}), mockRequest, false);
+        // App remains offline because shouldForceOffline is an independent debug override
+        expect(getIsOffline()).toBe(true);
+        jest.runAllTimers();
+        expect(reconnectListener).not.toHaveBeenCalled();
     });
 });

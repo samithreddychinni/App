@@ -42,12 +42,24 @@ onSustainedFailureChange((active) => setSustainedFailures(active));
 // false does not re-set the hard stop. When the Ping finally passes, the NetInfo listener
 // sees the app is already online and does nothing.
 onRequestSuccess(() => {
-    if (!internetUnreachable) {
+    const hasAnyHardStop = !hasRadio || internetUnreachable || sustainedFailuresActive;
+    if (!hasAnyHardStop) {
         return;
     }
-    Log.info('[NetworkState] INTERNET_UNREACHABLE cleared — a successful request proved connectivity');
+    if (!hasRadio) {
+        Log.info('[NetworkState] NO_RADIO cleared — a successful request proved radio connectivity');
+    }
+    if (internetUnreachable) {
+        Log.info('[NetworkState] INTERNET_UNREACHABLE cleared — a successful request proved connectivity');
+    }
+    if (sustainedFailuresActive) {
+        Log.info('[NetworkState] SUSTAINED_FAILURES cleared — a successful request proved connectivity');
+    }
     clearHardStops();
-    scheduleJitteredReconnect();
+    refresh();
+    if (!shouldForceOffline) {
+        scheduleJitteredReconnect();
+    }
 });
 
 function getIsOffline(): boolean {
@@ -177,6 +189,7 @@ function scheduleJitteredReconnect() {
 }
 
 function clearHardStops() {
+    hasRadio = true;
     internetUnreachable = false;
     sustainedFailuresActive = false;
     resetFailureCounters();
