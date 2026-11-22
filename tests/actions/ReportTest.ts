@@ -73,6 +73,7 @@ import {formatPhoneNumber} from '../utils/TestHelper';
 import waitForBatchedUpdates from '../utils/waitForBatchedUpdates';
 import waitForNetworkPromises from '../utils/waitForNetworkPromises';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
 jest.mock('@libs/ConciergeResponseIndicator', () => ({__esModule: true, default: jest.fn()}));
 
 jest.mock('@libs/Fullstory/utils', () => ({
@@ -4207,6 +4208,43 @@ describe('actions/Report', () => {
             }
             const formEntries = Object.fromEntries(body);
             expect(formEntries.selectedInterestedFeatures).toBe(JSON.stringify(selectedInterestedFeatures));
+        });
+
+        it('should forward empty selectedInterestedFeatures to the CompleteGuidedSetup API call as an empty JSON array', async () => {
+            await Onyx.set(ONYXKEYS.SESSION, {email: TEST_USER_LOGIN, accountID: TEST_USER_ACCOUNT_ID});
+            jest.mocked(global.fetch).mockClear();
+            await waitForBatchedUpdates();
+
+            const engagementChoice = CONST.INTRO_CHOICES.MANAGE_TEAM;
+            const {onboardingMessages} = getOnboardingMessages();
+            const selectedInterestedFeatures: string[] = [];
+
+            Report.completeOnboarding({
+                conciergeChat: undefined,
+                engagementChoice,
+                onboardingMessage: onboardingMessages[engagementChoice],
+                adminsChatReportID: '7957055873634069',
+                onboardingPolicyID: 'A70D00C752416809',
+                companySize: CONST.ONBOARDING_COMPANY_SIZE.SMALL,
+                userReportedIntegration: null,
+                selectedInterestedFeatures,
+                introSelected: {choice: engagementChoice},
+                isSelfTourViewed: false,
+                currentUserAccountID: TEST_USER_ACCOUNT_ID,
+                delegateAccountID: undefined,
+            });
+
+            await waitForBatchedUpdates();
+
+            const calls = TestHelper.getFetchMockCalls(WRITE_COMMANDS.COMPLETE_GUIDED_SETUP);
+            expect(calls.length).toBeGreaterThan(0);
+            const body = calls.at(-1)?.[1]?.body;
+            expect(body).toBeInstanceOf(FormData);
+            if (!(body instanceof FormData)) {
+                throw new Error('Expected CompleteGuidedSetup request body to be FormData');
+            }
+            const formEntries = Object.fromEntries(body);
+            expect(formEntries.selectedInterestedFeatures).toBe(JSON.stringify([]));
         });
 
         it('should forward the user-reported integration name to the CompleteGuidedSetup API call', async () => {

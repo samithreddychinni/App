@@ -6691,7 +6691,7 @@ async function completeOnboarding({
         selfDMReportID: selfDMParameters.reportID,
         selfDMCreatedReportActionID: selfDMParameters.createdReportActionID,
         optimisticConciergeReportActionID,
-        selectedInterestedFeatures: selectedInterestedFeatures && selectedInterestedFeatures.length > 0 ? JSON.stringify(selectedInterestedFeatures) : undefined,
+        selectedInterestedFeatures: selectedInterestedFeatures !== undefined ? JSON.stringify(selectedInterestedFeatures) : undefined,
         personalTrackGoal,
     };
 
