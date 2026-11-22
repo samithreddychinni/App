@@ -1,3 +1,4 @@
+jest.mock('@expensify/react-native-hybrid-app', () => ({__esModule: true, default: {isHybridApp: jest.fn(() => false)}}));
 /* eslint-disable @typescript-eslint/naming-convention */
 import {renderHook} from '@testing-library/react-native';
 
@@ -1762,6 +1763,8 @@ describe('PolicyUtils', () => {
                 expect(canMemberWrite(buildPolicy(CONST.POLICY.ROLE.CARD_ADMIN), memberLogin, CONST.POLICY.POLICY_FEATURE.WORKFLOWS_PAYMENTS)).toBe(false);
                 expect(canMemberWrite(buildPolicy(CONST.POLICY.ROLE.PEOPLE_ADMIN), memberLogin, CONST.POLICY.POLICY_FEATURE.WORKFLOWS_APPROVALS)).toBe(true);
                 expect(canMemberWrite(buildPolicy(CONST.POLICY.ROLE.PAYMENTS_ADMIN), memberLogin, CONST.POLICY.POLICY_FEATURE.WORKFLOWS_PAYMENTS)).toBe(true);
+                expect(canMemberWrite(buildPolicy(CONST.POLICY.ROLE.PEOPLE_ADMIN), memberLogin, CONST.POLICY.POLICY_FEATURE.AGENTS)).toBe(false);
+                expect(canMemberRead(buildPolicy(CONST.POLICY.ROLE.PEOPLE_ADMIN), memberLogin, CONST.POLICY.POLICY_FEATURE.AGENTS)).toBe(true);
             });
 
             it('limits People Admin member role management to guests, members, and auditors', () => {
