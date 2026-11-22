@@ -1,4 +1,4 @@
-import {render, screen} from '@testing-library/react-native';
+import {fireEvent, render, screen} from '@testing-library/react-native';
 
 import {CurrentUserPersonalDetailsProvider} from '@components/CurrentUserPersonalDetailsProvider';
 import HTMLEngineProvider from '@components/HTMLEngineProvider';
@@ -7,6 +7,7 @@ import OnyxListItemProvider from '@components/OnyxListItemProvider';
 
 import initOnyxDerivedValues from '@libs/actions/OnyxDerived';
 import {fetchOutstandingReports} from '@libs/actions/OutstandingReports';
+import {setTransactionReport} from '@libs/actions/Transaction';
 
 import DynamicIOURequestStepReportWithWritableReportOrNotFound from '@pages/iou/request/step/DynamicIOURequestStepReport';
 
@@ -21,6 +22,10 @@ import {createPolicyExpenseChat, createRandomReport} from '../../utils/collectio
 import {signInWithTestUser} from '../../utils/TestHelper';
 import waitForBatchedUpdates from '../../utils/waitForBatchedUpdates';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    isHybridApp: jest.fn(() => false),
+}));
+
 jest.mock('@components/ProductTrainingContext', () => ({
     useProductTrainingContext: () => [false],
 }));
@@ -32,6 +37,7 @@ jest.mock('@libs/Navigation/navigationRef', () => ({
         params: {},
     })),
     getState: jest.fn(() => ({})),
+    getRootState: jest.fn(() => ({})),
     isReady: jest.fn(() => false),
     addListener: jest.fn(() => jest.fn()),
 }));
@@ -77,6 +83,13 @@ jest.mock('@libs/actions/Transaction', () => {
         setTransactionReport: jest.fn(),
     };
 });
+
+jest.mock('@libs/Navigation/TransitionTracker', () => ({
+    runAfterTransitions: jest.fn(({callback}: {callback: () => void}) => {
+        callback();
+        return {cancel: jest.fn()};
+    }),
+}));
 
 jest.mock('@libs/actions/OutstandingReports', () => ({
     fetchOutstandingReports: jest.fn(),
@@ -236,5 +249,36 @@ describe('IOURequestStepReport with a generated New report ID', () => {
         expect(screen.queryByTestId(`${CONST.BASE_LIST_ITEM_TEST_ID}${REPORT_ID_1}`)).toBeNull();
         expect(fetchOutstandingReports).toHaveBeenCalledWith(ACCOUNT_ID, POLICY_ID_2, 0);
         expect(fetchOutstandingReports).not.toHaveBeenCalledWith(APPROVER_ACCOUNT_ID, POLICY_ID_2, 0);
+    });
+
+    it('should create new report under originating workspace when non-default workspace has open reports', async () => {
+        // Given Workspace A as the default workspace (activePolicyID) and an expense created in Workspace B's chat
+        await givenExpenseInWorkspaceChatWithSubmittedReport();
+        await Onyx.set(ONYXKEYS.NVP_ACTIVE_POLICY_ID, POLICY_ID_1);
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID_1}`, {name: 'Default Workspace A'});
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID_2}`, {name: 'Originating Workspace B'});
+        // Workspace B has an open report owned by the user
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${REPORT_ID_2}`, buildExpenseReport(REPORT_ID_2, POLICY_ID_2, WORKSPACE_CHAT_ID));
+        await waitForBatchedUpdates();
+        jest.mocked(setTransactionReport).mockClear();
+
+        // When the report picker is opened from the expense creation flow
+        await renderReportPickerForNewReport();
+
+        // Then "Create report" and existing reports target originating Workspace B instead of default Workspace A
+        expect(await screen.findAllByText('Originating Workspace B')).toHaveLength(2);
+        expect(screen.queryByText('Default Workspace A')).toBeNull();
+
+        // And pressing "Create report" creates the report in Workspace B
+        fireEvent.press(screen.getByRole('button', {name: /Create report/}), {nativeEvent: {}});
+        await waitForBatchedUpdates();
+
+        expect(setTransactionReport).toHaveBeenCalledWith(
+            TRANSACTION_ID,
+            expect.objectContaining({
+                participants: [expect.objectContaining({policyID: POLICY_ID_2})],
+            }),
+            true,
+        );
     });
 });
