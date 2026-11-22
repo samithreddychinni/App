@@ -763,7 +763,7 @@ function buildOnyxDataForMoneyRequest(moneyRequestParams: BuildOnyxDataForMoneyR
         !!iou.report?.reportID &&
         wasReportShowingRowsWhenActionBegan(iou.report.reportID, () => isReportShowingRowsBesidesThisAdd(iou.report, existingReportTransactions));
     const isInsertionIntoReportTheUserHasSeen = isMoneyRequestReport(iou.report) && wasShowingRowsWhenActionBegan;
-    if (iou.report?.reportID && transaction.transactionID && !isSelfDMSplit && !shouldSkipReportHighlightRail && isInsertionIntoReportTheUserHasSeen) {
+    if (iou.report?.reportID && transaction.transactionID && !isSelfDMSplit && !isReverseSplitOperation && !shouldSkipReportHighlightRail && isInsertionIntoReportTheUserHasSeen) {
         const {optimisticUpdate, failureUpdate} = buildNewTransactionFlagForReportTable({expenseReportID: iou.report.reportID, transactionID: transaction.transactionID});
         onyxData.optimisticData?.push(optimisticUpdate);
         onyxData.failureData?.push(failureUpdate);

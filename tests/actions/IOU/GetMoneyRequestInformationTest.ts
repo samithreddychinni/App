@@ -10,6 +10,8 @@ import Onyx from 'react-native-onyx';
 import {formatPhoneNumber, getCurrencyDecimalsLocal} from '../../utils/TestHelper';
 import waitForBatchedUpdates from '../../utils/waitForBatchedUpdates';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+
 jest.mock('@src/libs/Navigation/Navigation', () => ({
     navigate: jest.fn(),
     goBack: jest.fn(),
@@ -386,6 +388,28 @@ describe('getMoneyRequestInformation', () => {
 
             // Then it is not flagged, since it adds no row to the report
             expect(result.transaction.transactionID).toBe(existingTransactionID);
+            expect(getRailFlagKeys(result.onyxData.optimisticData, moneyRequestReportID)).toEqual([]);
+        });
+
+        it('does not flag the restored transaction during a reverse split operation', async () => {
+            // Given an expense report that already holds an existing expense
+            const moneyRequestReportID = 'iou-report-rail-reverse-split';
+            await setReportTransaction('existing-tx-1', moneyRequestReportID);
+            await waitForBatchedUpdates();
+            const existingIOUReport = buildExistingIOUReport(moneyRequestReportID, 2);
+
+            // When a reverse split restores the original transaction
+            const result = getMoneyRequestInformation({
+                ...baseParams,
+                getCurrencyDecimals: getCurrencyDecimalsLocal,
+                existingIOUReport,
+                moneyRequestReportID,
+                existingTransactionID: 'original-tx-to-restore',
+                isSplitExpense: true,
+                isReverseSplitOperation: true,
+            });
+
+            // Then it is not flagged, because collapsing a split back into its original expense must not trigger a new expense flash
             expect(getRailFlagKeys(result.onyxData.optimisticData, moneyRequestReportID)).toEqual([]);
         });
 

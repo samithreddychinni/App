@@ -29,6 +29,8 @@ import getFlaggedTransactionIDs from '../../utils/pendingNewTransactionFlags';
 import {getGlobalFetchMock, formatPhoneNumber, getCurrencyDecimalsLocal, getCurrencySymbolLocal} from '../../utils/TestHelper';
 import waitForBatchedUpdates from '../../utils/waitForBatchedUpdates';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+
 const topMostReportID = '23423423';
 jest.mock('@src/libs/Navigation/Navigation', () => ({
     navigate: jest.fn(),
@@ -759,19 +761,32 @@ describe('actions/IOU', () => {
         }
 
         it('skips registration during a reverse split operation', async () => {
+            // Given an expense report already holding transactions (e.g. another expense in the report)
+            const expenseReport = {reportID: EXPENSE_REPORT_ID, type: CONST.REPORT.TYPE.EXPENSE, parentReportID: 'parent-report-1', chatReportID: 'chat-report-1'} as Report;
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${EXPENSE_REPORT_ID}`, expenseReport);
+            const otherTx = {transactionID: 'other-tx-1', reportID: EXPENSE_REPORT_ID, amount: 7000};
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.TRANSACTION}other-tx-1`, otherTx);
+
             // Given one existing child transaction (triggers isReverseSplitOperation when splitExpenses.length === 1)
             const existingChildTx = {
                 transactionID: 'child-tx-1',
                 reportID: EXPENSE_REPORT_ID,
                 comment: {originalTransactionID: ORIGINAL_TX_ID, source: CONST.IOU.TYPE.SPLIT},
             };
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.TRANSACTION}child-tx-1`, existingChildTx);
+
             // The single split expense has a new ID — without the isReverseSplitOperation guard it would be registered
             const params = buildBaseParams({
-                allTransactionsList: {[`${ONYXKEYS.COLLECTION.TRANSACTION}child-tx-1`]: existingChildTx},
+                expenseReport,
+                allReportsList: {[`${ONYXKEYS.COLLECTION.REPORT}${EXPENSE_REPORT_ID}`]: expenseReport},
+                allTransactionsList: {
+                    [`${ONYXKEYS.COLLECTION.TRANSACTION}other-tx-1`]: otherTx,
+                    [`${ONYXKEYS.COLLECTION.TRANSACTION}child-tx-1`]: existingChildTx,
+                },
                 transactionData: {
                     reportID: EXPENSE_REPORT_ID,
                     originalTransactionID: ORIGINAL_TX_ID,
-                    splitExpenses: [{transactionID: 'new-merged-tx', reportID: EXPENSE_REPORT_ID, amount: 1000, created: '2024-01-01'}],
+                    splitExpenses: [{transactionID: 'child-tx-1', reportID: EXPENSE_REPORT_ID, amount: 1000, created: '2024-01-01'}],
                     splitExpensesTotal: 1000,
                 },
             });
