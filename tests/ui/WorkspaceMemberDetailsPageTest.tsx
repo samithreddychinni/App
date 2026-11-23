@@ -1,3 +1,4 @@
+jest.mock("@expensify/react-native-hybrid-app", () => ({__esModule: true, default: {isHybridApp: jest.fn(() => false)}}));
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react-native';
 
 import ComposeProviders from '@components/ComposeProviders';
@@ -1064,6 +1065,27 @@ describe('WorkspaceMemberDetailsPage', () => {
 
         // Then the existing self DM opens, the same as from their Profile page
         expect(navigateSpy).toHaveBeenCalledWith(ROUTES.REPORT_WITH_ID.getRoute(selfDMReportID));
+        unmount();
+        await waitForBatchedUpdatesWithAct();
+    });
+
+    it('navigates to chat history by dismissing modal before navigating', async () => {
+        const dismissSpy = jest.spyOn(Navigation, 'dismissModal').mockImplementation((options) => {
+            options?.afterTransition?.();
+        });
+        const navigateSpy = jest.spyOn(Navigation, 'navigate').mockImplementation(() => {});
+        const revealSpy = jest.spyOn(Navigation, 'revealRouteBeforeDismissingModal').mockImplementation(() => {});
+
+        // When the admin opens the member details and clicks "See chat history"
+        const {unmount} = renderPage({policyID: policy.id, accountID: String(invitedAccountID)});
+        await waitForBatchedUpdatesWithAct();
+        fireEvent.press(await screen.findByTestId('member-chat-history-menu-item'), {nativeEvent: {}});
+        await waitForBatchedUpdatesWithAct();
+
+        // Then Navigation.dismissModal is called with afterTransition navigating to chat search
+        expect(dismissSpy).toHaveBeenCalledTimes(1);
+        expect(navigateSpy).toHaveBeenCalledTimes(1);
+        expect(revealSpy).not.toHaveBeenCalled();
         unmount();
         await waitForBatchedUpdatesWithAct();
     });

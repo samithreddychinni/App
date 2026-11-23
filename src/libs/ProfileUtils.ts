@@ -35,7 +35,8 @@ function navigateToChatHistory(accountID: number) {
         type: CONST.SEARCH.DATA_TYPES.CHAT,
         from: [String(accountID)],
     });
-    Navigation.revealRouteBeforeDismissingModal(ROUTES.SEARCH_ROOT.getRoute({query, rawQuery: query}));
+    const route = ROUTES.SEARCH_ROOT.getRoute({query, rawQuery: query});
+    Navigation.dismissModal({afterTransition: () => Navigation.navigate(route)});
 }
 
 export {shouldShowLocalTime, getChatHistoryTranslationKey, navigateToChatHistory};
