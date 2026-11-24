@@ -12445,8 +12445,14 @@ function navigateToLinkedReportAction(
         const routeBelow = rhpIndex > 0 ? rhpState?.routes.at(rhpIndex - 1) : undefined;
         const routeBelowParams = routeBelow?.params as {reportID?: string} | undefined;
 
-        if (routeBelow?.key && routeBelowParams?.reportID === ancestor.report.reportID) {
-            Navigation.setParams({reportActionID: ancestor.reportAction.reportActionID}, routeBelow.key, rhpState?.key);
+        const isAncestorShownInRouteBelow =
+            routeBelowParams?.reportID === ancestor.report.reportID ||
+            (isReportTransactionThread(ancestor.report) && routeBelowParams?.reportID === ancestor.report.parentReportID);
+
+        if (routeBelow?.key && isAncestorShownInRouteBelow) {
+            if (routeBelowParams?.reportID === ancestor.report.reportID) {
+                Navigation.setParams({reportActionID: ancestor.reportAction.reportActionID}, routeBelow.key, rhpState?.key);
+            }
             Navigation.goBack();
             return;
         }
