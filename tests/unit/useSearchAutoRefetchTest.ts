@@ -16,6 +16,8 @@ import Onyx from 'react-native-onyx';
 
 import createMock from '../utils/createMock';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+
 const mockUseIsFocused = jest.fn((): boolean => true);
 
 jest.mock('@libs/actions/Search');
@@ -880,6 +882,177 @@ describe('useSearchAutoRefetch', () => {
 
             // Then no search is sent, since nothing the results already show has changed
             expect(search).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('expense-report newly created reports', () => {
+        const expenseReportProps = createMock<UseSearchAutoRefetch>({
+            ...baseProps,
+            queryJSON: {
+                ...baseProps.queryJSON,
+                type: 'expense-report' as const,
+                inputQuery: 'type:expense-report',
+            },
+            searchResults: {
+                ...baseProps.searchResults,
+                data: {},
+            },
+            reportActions: {
+                reportActions_1: {
+                    '1': {actionName: 'CREATED', reportActionID: '1', reportID: '1'},
+                },
+            },
+            previousReportActions: {
+                reportActions_1: {
+                    '1': {actionName: 'CREATED', reportActionID: '1', reportID: '1'},
+                },
+            },
+        });
+
+        it('should trigger search for expense-report search when a newly created report is added and absent from search results', () => {
+            const {rerender} = renderHook((props: UseSearchAutoRefetch) => useSearchAutoRefetch(props), {
+                initialProps: expenseReportProps,
+            });
+
+            const updatedProps = createMock<UseSearchAutoRefetch>({
+                ...expenseReportProps,
+                reportActions: {
+                    ...expenseReportProps.reportActions,
+                    reportActions_2: {
+                        '10': {actionName: 'CREATED', reportActionID: '10', reportID: '2'},
+                    },
+                },
+            });
+
+            rerender(updatedProps);
+            expect(search).toHaveBeenCalledWith({
+                queryJSON: expenseReportProps.queryJSON,
+                searchKey: undefined,
+                offset: 0,
+                shouldCalculateTotals: false,
+                isLoading: false,
+            });
+        });
+
+        it('should not trigger search for expense-report search when the newly created report is already in search results', () => {
+            const propsWithExistingReport = createMock<UseSearchAutoRefetch>({
+                ...expenseReportProps,
+                searchResults: {
+                    ...expenseReportProps.searchResults,
+                    data: {
+                        report_2: {reportID: '2'},
+                    },
+                },
+            });
+
+            const {rerender} = renderHook((props: UseSearchAutoRefetch) => useSearchAutoRefetch(props), {
+                initialProps: propsWithExistingReport,
+            });
+
+            const updatedProps = createMock<UseSearchAutoRefetch>({
+                ...propsWithExistingReport,
+                reportActions: {
+                    ...propsWithExistingReport.reportActions,
+                    reportActions_2: {
+                        '10': {actionName: 'CREATED', reportActionID: '10', reportID: '2'},
+                    },
+                },
+            });
+
+            rerender(updatedProps);
+            expect(search).not.toHaveBeenCalled();
+        });
+
+        it('should not trigger search for transaction expense search when a newly created report is added', () => {
+            const transactionExpenseProps = createMock<UseSearchAutoRefetch>({
+                ...baseProps,
+                queryJSON: {
+                    ...baseProps.queryJSON,
+                    type: 'expense' as const,
+                },
+                reportActions: {
+                    reportActions_1: {
+                        '1': {actionName: 'CREATED', reportActionID: '1', reportID: '1'},
+                    },
+                },
+                previousReportActions: {
+                    reportActions_1: {
+                        '1': {actionName: 'CREATED', reportActionID: '1', reportID: '1'},
+                    },
+                },
+            });
+
+            const {rerender} = renderHook((props: UseSearchAutoRefetch) => useSearchAutoRefetch(props), {
+                initialProps: transactionExpenseProps,
+            });
+
+            const updatedProps = createMock<UseSearchAutoRefetch>({
+                ...transactionExpenseProps,
+                reportActions: {
+                    ...transactionExpenseProps.reportActions,
+                    reportActions_2: {
+                        '10': {actionName: 'CREATED', reportActionID: '10', reportID: '2'},
+                    },
+                },
+            });
+
+            rerender(updatedProps);
+            expect(search).not.toHaveBeenCalled();
+        });
+
+        it('should not trigger search for expense-report search when a non-created action is added to an existing report', () => {
+            const {rerender} = renderHook((props: UseSearchAutoRefetch) => useSearchAutoRefetch(props), {
+                initialProps: expenseReportProps,
+            });
+
+            const updatedProps = createMock<UseSearchAutoRefetch>({
+                ...expenseReportProps,
+                reportActions: {
+                    reportActions_1: {
+                        '1': {actionName: 'CREATED', reportActionID: '1', reportID: '1'},
+                        '2': {actionName: 'ADDCOMMENT', reportActionID: '2', reportID: '1'},
+                    },
+                },
+            });
+
+            rerender(updatedProps);
+            expect(search).not.toHaveBeenCalled();
+        });
+
+        it('should defer search for expense-report when inactive and trigger once focused', () => {
+            mockUseIsFocused.mockReturnValue(false);
+
+            const {rerender} = renderHook((props: UseSearchAutoRefetch) => useSearchAutoRefetch(props), {
+                initialProps: expenseReportProps,
+            });
+
+            const updatedReportActions = {
+                ...expenseReportProps.reportActions,
+                reportActions_2: {
+                    '10': {actionName: 'CREATED', reportActionID: '10', reportID: '2'},
+                },
+            };
+
+            const updatedProps = createMock<UseSearchAutoRefetch>({
+                ...expenseReportProps,
+                reportActions: updatedReportActions,
+            });
+
+            rerender(updatedProps);
+            expect(search).not.toHaveBeenCalled();
+
+            // When `usePrevious` catches up while still inactive
+            const caughtUpProps = createMock<UseSearchAutoRefetch>({
+                ...updatedProps,
+                previousReportActions: updatedReportActions,
+            });
+            rerender(caughtUpProps);
+            expect(search).not.toHaveBeenCalled();
+
+            // Once active again
+            mockUseIsFocused.mockReturnValue(true);
+            rerender({...caughtUpProps});
+            expect(search).toHaveBeenCalledTimes(1);
         });
     });
 });

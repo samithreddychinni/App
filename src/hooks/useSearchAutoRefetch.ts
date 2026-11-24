@@ -80,6 +80,7 @@ function useSearchAutoRefetch({
     const searchTriggeredRef = useRef(false);
     const hasPendingSearchRef = useRef(false);
     const isChat = queryJSON.type === CONST.SEARCH.DATA_TYPES.CHAT;
+    const isExpenseReport = queryJSON.type === CONST.SEARCH.DATA_TYPES.EXPENSE_REPORT;
     const shouldRefetchOnReportActionChange = shouldRefetchSearchOnReportActionChange(queryJSON);
     const isGroupedSearch = !!getValidGroupBy(queryJSON.groupBy);
     const shouldReturnTripRooms = useShouldReturnTripRooms(queryJSON.type);
@@ -145,9 +146,15 @@ function useSearchAutoRefetch({
         // Submitting, approving or forwarding a report changes no transaction, but it can move the report's expenses in or out of the results.
         const hasRelevantReportActionChange = !isChat && shouldRefetchOnReportActionChange && hasAddedWorkflowReportAction(reportActions, previousReportActions);
 
+        // Creating an empty report adds no transaction, but the new report must appear in expense-report searches.
+        const newlyCreatedReportIDs = isExpenseReport ? getNewlyCreatedReportIDs(reportActions, previousReportActions) : [];
+        const hasNewlyCreatedReport = isExpenseReport && newlyCreatedReportIDs.some((reportID) => !searchResultsData?.[`${ONYXKEYS.COLLECTION.REPORT}${reportID}`]);
+
         // Check if there is a change in the transactions or report actions list
         if (
-            (isChat ? hasReportActionsIDsChange : hasTransactionsIDsChange || hasChangedResultTransaction || hasChangedResultMemberCustomField || hasRelevantReportActionChange) ||
+            (isChat
+                ? hasReportActionsIDsChange
+                : hasTransactionsIDsChange || hasChangedResultTransaction || hasChangedResultMemberCustomField || hasRelevantReportActionChange || hasNewlyCreatedReport) ||
             hasPendingSearchRef.current
         ) {
             // Skip if offline, or if the user has navigated to a different fullscreen page entirely.
@@ -192,6 +199,7 @@ function useSearchAutoRefetch({
                 !hasChangedResultTransaction &&
                 !hasChangedResultMemberCustomField &&
                 !hasRelevantReportActionChange &&
+                !hasNewlyCreatedReport &&
                 !hadPendingSearch &&
                 currentSearchResultIDs.length > 0
             ) {
@@ -381,6 +389,32 @@ function hasAddedWorkflowReportAction(reportActions: OnyxCollection<ReportAction
     }
 
     return false;
+}
+
+/**
+ * Returns newly created report IDs whose CREATED report action was added in the latest update.
+ */
+function getNewlyCreatedReportIDs(reportActions: OnyxCollection<ReportActions>, previousReportActions: OnyxCollection<ReportActions>): string[] {
+    const createdReportIDs: string[] = [];
+    for (const [key, actions] of Object.entries(reportActions ?? {})) {
+        const previousActions = previousReportActions?.[key];
+        if (!actions || actions === previousActions) {
+            continue;
+        }
+        for (const [reportActionID, reportAction] of Object.entries(actions)) {
+            if (previousActions?.[reportActionID]) {
+                continue;
+            }
+            if (reportAction?.actionName === CONST.REPORT.ACTIONS.TYPE.CREATED) {
+                const reportID = reportAction.reportID ?? key.slice(ONYXKEYS.COLLECTION.REPORT_ACTIONS.length);
+                if (reportID) {
+                    createdReportIDs.push(reportID);
+                }
+            }
+        }
+    }
+
+    return createdReportIDs;
 }
 
 function hasChangedMemberCustomField(memberCustomFields: MemberCustomFieldsByPolicyID | undefined, previousMemberCustomFields: MemberCustomFieldsByPolicyID | undefined): boolean {
