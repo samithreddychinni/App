@@ -1,6 +1,8 @@
 import {clearPolicyTagsLoadingState, openPolicyTagsPage} from '@libs/actions/Policy/Tag';
 import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
+import {canMemberRead} from '@libs/PolicyUtils';
 
+import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 
 import {useEffect, useRef} from 'react';
@@ -19,11 +21,14 @@ import useOnyx from './useOnyx';
  * redundant read (`API.read` does not dedupe in flight reads).
  */
 function useLoadPolicyTags(policyID: string | undefined) {
+    const [policy] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${getNonEmptyStringOnyxID(policyID)}`);
+    const [currentUserLogin] = useOnyx(ONYXKEYS.SESSION, {selector: (session) => session?.email});
     const [loadingState] = useOnyx(`${ONYXKEYS.COLLECTION.RAM_ONLY_POLICY_TAGS_LOADING_STATE}${getNonEmptyStringOnyxID(policyID)}`);
     const [policyTags] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_TAGS}${getNonEmptyStringOnyxID(policyID)}`);
     const isLoading = !!loadingState?.isLoading;
     const hasOnceLoaded = !!loadingState?.hasOnceLoaded;
     const hasTags = policyTags !== undefined;
+    const canReadTags = canMemberRead(policy, currentUserLogin ?? '', CONST.POLICY.POLICY_FEATURE.TAGS);
 
     // The policyID this instance has already dispatched a read for. A failed read clears `isLoading` without setting
     // `hasOnceLoaded`, which would otherwise re-satisfy the effect's guard and retry in a tight loop. Scoping the
@@ -32,7 +37,7 @@ function useLoadPolicyTags(policyID: string | undefined) {
 
     const {isOffline} = useNetwork({
         onReconnect: () => {
-            if (!policyID || hasOnceLoaded) {
+            if (!policyID || hasOnceLoaded || !canReadTags) {
                 return;
             }
             // A read cut off by the disconnect never gets a response, so its `failureData` never applies and
@@ -43,17 +48,17 @@ function useLoadPolicyTags(policyID: string | undefined) {
     });
 
     useEffect(() => {
-        if (isOffline || !policyID || isLoading || hasOnceLoaded || requestedPolicyIDRef.current === policyID) {
+        if (isOffline || !policyID || isLoading || hasOnceLoaded || requestedPolicyIDRef.current === policyID || !canReadTags) {
             return;
         }
         requestedPolicyIDRef.current = policyID;
         openPolicyTagsPage(policyID);
-    }, [policyID, isOffline, isLoading, hasOnceLoaded]);
+    }, [policyID, isOffline, isLoading, hasOnceLoaded, canReadTags]);
 
     // True only while the read is unsettled and there is nothing to render yet, so the picker shows a skeleton instead
     // of an empty list. The `policyID` check mirrors the effect's guard: with no policyID no read is ever dispatched,
     // so the absent loading state would otherwise keep the skeleton up forever.
-    const isLoadingPolicyTags = !!policyID && !isOffline && !hasOnceLoaded && !hasTags && (isLoading || loadingState === undefined);
+    const isLoadingPolicyTags = !!policyID && !isOffline && !hasOnceLoaded && !hasTags && canReadTags && (isLoading || loadingState === undefined);
 
     // Only a completed read guarantees the collection holds every tag list, so callers that rely on the full list count check this
     return {isLoadingPolicyTags, hasLoadedPolicyTags: hasOnceLoaded};

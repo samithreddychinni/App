@@ -1,6 +1,8 @@
 import {clearPolicyCategoriesLoadingState, getPolicyCategories} from '@libs/actions/Policy/Category';
 import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
+import {canMemberRead} from '@libs/PolicyUtils';
 
+import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 import type {PolicyCategories} from '@src/types/onyx';
 
@@ -24,10 +26,13 @@ const hasPolicyCategoriesSelector = (policyCategories: OnyxEntry<PolicyCategorie
  * redundant `GetPolicyCategories` read (`API.read` does not dedupe in flight reads).
  */
 function useLoadPolicyCategories(policyID: string | undefined) {
+    const [policy] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY}${getNonEmptyStringOnyxID(policyID)}`);
+    const [currentUserLogin] = useOnyx(ONYXKEYS.SESSION, {selector: (session) => session?.email});
     const [loadingState] = useOnyx(`${ONYXKEYS.COLLECTION.RAM_ONLY_POLICY_CATEGORIES_LOADING_STATE}${getNonEmptyStringOnyxID(policyID)}`);
     const [hasCategories = false] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES}${getNonEmptyStringOnyxID(policyID)}`, {selector: hasPolicyCategoriesSelector});
     const isLoading = !!loadingState?.isLoading;
     const hasOnceLoaded = !!loadingState?.hasOnceLoaded;
+    const canReadCategories = canMemberRead(policy, currentUserLogin ?? '', CONST.POLICY.POLICY_FEATURE.CATEGORIES);
 
     // The policyID this instance has already dispatched a read for. A failed read clears `isLoading` without setting
     // `hasOnceLoaded`, which would otherwise re-satisfy the effect's guard and retry in a tight loop. Scoping the
@@ -36,7 +41,7 @@ function useLoadPolicyCategories(policyID: string | undefined) {
 
     const {isOffline} = useNetwork({
         onReconnect: () => {
-            if (!policyID || hasOnceLoaded) {
+            if (!policyID || hasOnceLoaded || !canReadCategories) {
                 return;
             }
             // A read cut off by the disconnect never gets a response, so its `failureData` never applies and
@@ -47,17 +52,17 @@ function useLoadPolicyCategories(policyID: string | undefined) {
     });
 
     useEffect(() => {
-        if (isOffline || !policyID || isLoading || hasOnceLoaded || requestedPolicyIDRef.current === policyID) {
+        if (isOffline || !policyID || isLoading || hasOnceLoaded || requestedPolicyIDRef.current === policyID || !canReadCategories) {
             return;
         }
         requestedPolicyIDRef.current = policyID;
         getPolicyCategories(policyID);
-    }, [policyID, isOffline, isLoading, hasOnceLoaded]);
+    }, [policyID, isOffline, isLoading, hasOnceLoaded, canReadCategories]);
 
     // True only while the read is unsettled and there is nothing to render yet, so the picker shows a skeleton instead
     // of an empty list. The `policyID` check mirrors the effect's guard: with no policyID no read is ever dispatched,
     // so the absent loading state would otherwise keep the skeleton up forever.
-    const isLoadingCompletePolicyCategories = !!policyID && !isOffline && !hasOnceLoaded && (isLoading || loadingState === undefined);
+    const isLoadingCompletePolicyCategories = !!policyID && !isOffline && !hasOnceLoaded && canReadCategories && (isLoading || loadingState === undefined);
     const isLoadingPolicyCategories = isLoadingCompletePolicyCategories && !hasCategories;
 
     return {isLoadingPolicyCategories, isLoadingCompletePolicyCategories};

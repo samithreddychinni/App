@@ -6,9 +6,12 @@ import useLoadPolicyTags from '@hooks/useLoadPolicyTags';
 import type * as PolicyCategory from '@libs/actions/Policy/Category';
 import type * as PolicyTag from '@libs/actions/Policy/Tag';
 
+import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
 
 import Onyx from 'react-native-onyx';
+
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
 
 /**
  * Both hooks own the picker's loading flag. Without a policyID no read is ever dispatched, so the loading state key
@@ -59,6 +62,7 @@ describe.each(hooks)('$name', ({renderPicker, getIsLoading, mockRead}) => {
     beforeEach(async () => {
         mockRead.mockClear();
         await Onyx.clear();
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID}`, {id: POLICY_ID, role: CONST.POLICY.ROLE.ADMIN});
     });
 
     it.each([undefined, ''])('settles on not-loading and dispatches no read when policyID is %p', async (policyID) => {
@@ -81,6 +85,41 @@ describe.each(hooks)('$name', ({renderPicker, getIsLoading, mockRead}) => {
         });
         expect(getIsLoading(result.current)).toBe(true);
     });
+
+    it('settles on not-loading and dispatches no read when the user is a regular workspace member', async () => {
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID}`, {id: POLICY_ID, role: CONST.POLICY.ROLE.USER});
+        const {result} = renderPicker(POLICY_ID);
+
+        expect(getIsLoading(result.current)).toBe(false);
+        await waitFor(() => {
+            expect(getIsLoading(result.current)).toBe(false);
+        });
+        expect(mockRead).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch a read on repeated picker mounts for regular workspace members', async () => {
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID}`, {id: POLICY_ID, role: CONST.POLICY.ROLE.USER});
+        const firstPicker = renderPicker(POLICY_ID);
+        expect(mockRead).not.toHaveBeenCalled();
+        firstPicker.unmount();
+
+        const secondPicker = renderPicker(POLICY_ID);
+        expect(mockRead).not.toHaveBeenCalled();
+        expect(getIsLoading(secondPicker.result.current)).toBe(false);
+    });
+
+    it.each([CONST.POLICY.ROLE.ADMIN, CONST.POLICY.ROLE.AUDITOR, CONST.POLICY.ROLE.EDITOR])(
+        'reports loading and dispatches a read when user has %s role',
+        async (role) => {
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID}`, {id: POLICY_ID, role, type: CONST.POLICY.TYPE.CORPORATE});
+            const {result} = renderPicker(POLICY_ID);
+
+            await waitFor(() => {
+                expect(mockRead).toHaveBeenCalledWith(POLICY_ID);
+            });
+            expect(getIsLoading(result.current)).toBe(true);
+        },
+    );
 });
 
 describe('useLoadPolicyTags hasLoadedPolicyTags', () => {
@@ -91,6 +130,7 @@ describe('useLoadPolicyTags hasLoadedPolicyTags', () => {
     beforeEach(async () => {
         mockOpenPolicyTagsPage.mockClear();
         await Onyx.clear();
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.POLICY}${POLICY_ID}`, {id: POLICY_ID, role: CONST.POLICY.ROLE.ADMIN});
     });
 
     it('stays false until the tags read completes, then becomes true', async () => {
