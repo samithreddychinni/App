@@ -18,7 +18,9 @@ import type {StackNavigationEventMap, StackNavigationOptions} from '@react-navig
 import type {PlatformStackNavigationOptions} from './NavigationOptions';
 
 // Represents the navigation state type for a platform-specific stack.
-type PlatformStackNavigationState<ParamList extends ParamListBase> = StackNavigationState<ParamList>;
+type PlatformStackNavigationState<ParamList extends ParamListBase> = StackNavigationState<ParamList> & {
+    pushParamsHistoryPosition?: number;
+};
 
 // Common event map merged from both stack and native-stack navigations.
 type CommonStackNavigationEventMap = CommonProperties<StackNavigationEventMap, NativeStackNavigationEventMap>;

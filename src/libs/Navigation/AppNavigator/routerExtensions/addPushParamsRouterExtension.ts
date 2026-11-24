@@ -97,6 +97,14 @@ function isPopAction(action: PushParamsRouterAction): boolean {
     return action.type === CONST.NAVIGATION.ACTION_TYPE.POP;
 }
 
+function getPushParamsHistoryPosition(state: {history?: unknown[]; pushParamsHistoryPosition?: number}): number {
+    const historyLength = state.history?.length ?? 0;
+    if (typeof state.pushParamsHistoryPosition === 'number' && state.pushParamsHistoryPosition >= 0 && state.pushParamsHistoryPosition < historyLength) {
+        return state.pushParamsHistoryPosition;
+    }
+    return historyLength > 0 ? historyLength - 1 : -1;
+}
+
 /**
  * Higher-order function that extends a stack router with push-params history functionality.
  * It maintains a separate history stack of route snapshots that can diverge from the routes array,
@@ -120,20 +128,14 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
 ) {
     return (options: RouterOptions): Router<PlatformStackNavigationState<ParamListBase>, PushParamsRouterAction> => {
         const router = originalRouter(options);
-        // lastIndex is ambiguous for duplicates (A→B→A), so we track cursor explicitly. Per-router so tests stay isolated.
-        let pushParamsHistoryPosition = -1;
-
-        // Without seeding, the first reflexive RESET before any PUSH_PARAMS hits inRange=false and is classified as 'forward', cancelling pending Esc-triggered restores.
-        const seedCursor = (state: ReturnType<typeof enhanceStateWithHistory>) => {
-            if (pushParamsHistoryPosition < 0 && state?.history?.length) {
-                pushParamsHistoryPosition = state.history.length - 1;
-            }
-            return state;
-        };
 
         const getInitialState = (configOptions: RouterConfigOptions) => {
             const state = router.getInitialState(configOptions);
-            return seedCursor(enhanceStateWithHistory(state));
+            const stateWithHistory = enhanceStateWithHistory(state);
+            return {
+                ...stateWithHistory,
+                pushParamsHistoryPosition: stateWithHistory.history?.length ? stateWithHistory.history.length - 1 : -1,
+            };
         };
 
         const getRehydratedState = (
@@ -141,7 +143,15 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
             configOptions: RouterConfigOptions,
         ) => {
             const state = router.getRehydratedState(partialState, configOptions);
-            return seedCursor(enhanceStateWithHistory(state));
+            const stateWithHistory = enhanceStateWithHistory(state);
+            const historyPosition =
+                'pushParamsHistoryPosition' in partialState && typeof partialState.pushParamsHistoryPosition === 'number'
+                    ? partialState.pushParamsHistoryPosition
+                    : (stateWithHistory.history?.length ? stateWithHistory.history.length - 1 : -1);
+            return {
+                ...stateWithHistory,
+                pushParamsHistoryPosition: historyPosition,
+            };
         };
 
         const getStateForAction = (
@@ -149,6 +159,8 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
             action: CommonActions.Action | StackActionType | PushParamsRouterAction,
             configOptions: RouterConfigOptions,
         ) => {
+            const pushParamsHistoryPosition = getPushParamsHistoryPosition(state);
+
             if (isPushParamsAction(action)) {
                 const setParamsAction = CommonActions.setParams(action.payload.params);
                 const stateWithUpdatedParams = router.getStateForAction(state, setParamsAction, configOptions);
@@ -174,8 +186,11 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                         pushParamsHistoryPosition >= 0 && pushParamsHistoryPosition < existingHistory.length - 1 ? existingHistory.slice(0, pushParamsHistoryPosition + 1) : existingHistory;
                     // No FIFO cap — useLinking decides push/replace by history.length delta; a fixed cap forces replaceState past the bound.
                     const newHistory = [...baseHistory, focusedRoute];
-                    pushParamsHistoryPosition = newHistory.length - 1;
-                    return {...stateWithUpdatedParams, history: newHistory};
+                    return {
+                        ...stateWithUpdatedParams,
+                        history: newHistory,
+                        pushParamsHistoryPosition: newHistory.length - 1,
+                    };
                 }
 
                 return stateWithUpdatedParams;
@@ -191,7 +206,7 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                     if (focusedRoute) {
                         // Cursor-relative, not last-two: last-two drifts out of sync after a mid-cursor browser-back RESET.
                         const history = state.history;
-                        const currentIdx = pushParamsHistoryPosition >= 0 && pushParamsHistoryPosition < history.length ? pushParamsHistoryPosition : history.length - 1;
+                        const currentIdx = pushParamsHistoryPosition;
                         const currentEntry = history.at(currentIdx);
 
                         if (isRecord(currentEntry) && currentEntry.key === focusedRoute.key) {
@@ -221,12 +236,12 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                                 // Pop only when cursor was at the end; mid-cursor preserves so browser-forward can still reach skipped entries.
                                 const cursorAtEnd = currentIdx === history.length - 1;
                                 const newHistory = cursorAtEnd ? history.slice(0, -1) : history;
-                                pushParamsHistoryPosition = prevIdx;
 
                                 return {
                                     ...state,
                                     routes,
                                     history: newHistory,
+                                    pushParamsHistoryPosition: prevIdx,
                                 };
                             }
                         }
@@ -240,10 +255,10 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                 }
                 const preservedHistory = preserveHistoryForRoutes(state.history, newState.routes);
                 // Sync cursor to the focused entry of the filtered history — same invariant as the fall-through path.
-                pushParamsHistoryPosition = preservedHistory.length > 0 ? preservedHistory.length - 1 : -1;
                 return {
                     ...newState,
                     history: preservedHistory,
+                    pushParamsHistoryPosition: preservedHistory.length > 0 ? preservedHistory.length - 1 : -1,
                 };
             }
 
@@ -257,6 +272,7 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                 return {
                     ...newState,
                     history: [...state.history],
+                    pushParamsHistoryPosition,
                 };
             }
 
@@ -267,22 +283,22 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                 // CommonActions.reset can install any index — pick the focused route, not routes.at(-1).
                 const newFocused = rehydratedState.routes.at(rehydratedState.index) ?? rehydratedState.routes.at(-1);
                 const history = state.history;
+                let nextHistoryPosition = pushParamsHistoryPosition;
                 if (newFocused?.key) {
                     const outcome = resolveCursorForReset(history, pushParamsHistoryPosition, {key: newFocused.key, params: newFocused.params});
                     if (outcome.type === 'backward' || outcome.type === 'ambiguous') {
                         // Ambiguous: cursor goes forward (per resolver) but we fire backward notify (WCAG 2.4.3 priority on direction-uncertain RESETs).
                         notifyPushParamsBackward(newFocused.key, newFocused.params);
-                        pushParamsHistoryPosition = outcome.cursor;
+                        nextHistoryPosition = outcome.cursor;
                     } else if (outcome.type === 'forward') {
                         cancelPendingFocusRestore();
-                        pushParamsHistoryPosition = outcome.cursor;
+                        nextHistoryPosition = outcome.cursor;
                     } else if (outcome.type === 'unknown') {
                         cancelPendingFocusRestore();
                         // Replace cursor entry to preserve history.length — useLinking interprets a shrink as goBack(delta), so a SET_PARAMS-then-layout-change-RESET would otherwise send the browser back N entries.
                         const preservedHistory = preserveHistoryForRoutes(history, rehydratedState.routes);
                         if (preservedHistory.length === 0) {
-                            pushParamsHistoryPosition = 0;
-                            return {...rehydratedState, history: [newFocused]};
+                            return {...rehydratedState, history: [newFocused], pushParamsHistoryPosition: 0};
                         }
                         // preserveHistoryForRoutes returns the same references, so indexOf remaps the cursor.
                         const cursorEntry = pushParamsHistoryPosition >= 0 && pushParamsHistoryPosition < history.length ? history.at(pushParamsHistoryPosition) : null;
@@ -290,8 +306,7 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                         const cursorIdx = remappedCursor >= 0 ? remappedCursor : preservedHistory.length - 1;
                         const updatedHistory = [...preservedHistory];
                         updatedHistory[cursorIdx] = newFocused;
-                        pushParamsHistoryPosition = cursorIdx;
-                        return {...rehydratedState, history: updatedHistory};
+                        return {...rehydratedState, history: updatedHistory, pushParamsHistoryPosition: cursorIdx};
                     }
                     // 'noop' — pending restore and cursor left intact.
                 }
@@ -300,22 +315,25 @@ function addPushParamsRouterExtension<RouterOptions extends PlatformStackRouterO
                 if (preservedHistory.length > 0) {
                     // Remap cursor when preservation removed entries — same logical entry, new index. `indexOf` reference-equality assumes `preserveHistoryForRoutes` doesn't clone; if it ever does, remap falls back to length-1.
                     if (preservedHistory.length !== history.length) {
-                        const cursorEntry = pushParamsHistoryPosition >= 0 && pushParamsHistoryPosition < history.length ? history.at(pushParamsHistoryPosition) : null;
+                        const cursorEntry = nextHistoryPosition >= 0 && nextHistoryPosition < history.length ? history.at(nextHistoryPosition) : null;
                         if (cursorEntry) {
                             const remapped = preservedHistory.indexOf(cursorEntry);
-                            pushParamsHistoryPosition = remapped >= 0 ? remapped : preservedHistory.length - 1;
+                            nextHistoryPosition = remapped >= 0 ? remapped : preservedHistory.length - 1;
                         }
                     }
                     return {
                         ...rehydratedState,
                         history: preservedHistory,
+                        pushParamsHistoryPosition: nextHistoryPosition,
                     };
                 }
             }
 
             // Sync cursor to the new focused entry — otherwise a prior mid-cursor position leaks into the rebuilt history and truncates valid entries on the next PUSH_PARAMS.
-            pushParamsHistoryPosition = rehydratedState.history?.length ? rehydratedState.history.length - 1 : -1;
-            return rehydratedState;
+            return {
+                ...rehydratedState,
+                pushParamsHistoryPosition: rehydratedState.history?.length ? rehydratedState.history.length - 1 : -1,
+            };
         };
 
         return {

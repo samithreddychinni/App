@@ -1009,6 +1009,57 @@ describe('addPushParamsRouterExtension', () => {
         expect(getStringParam(cursorEntryParams, 'q')).toBe('C');
         expect(getStringParam(cursorEntryParams, 'sort')).toBe('desc');
     });
+
+    it('calling getStateForAction for goBack twice on the same state (canGoBack dry-run + goBack) does not consume two history entries', () => {
+        const factory = createMockRouterFactory();
+        const enhancedRouter = addPushParamsRouterExtension(factory)(createMock<PlatformStackRouterOptions>({}));
+
+        const initial = makeRoute('Search', 'search-1', {tab: 'reports'});
+        let state: TestState = makeState([initial], {history: [{...initial}] satisfies CustomHistoryEntry[]});
+
+        // Tap Expenses
+        state = getTestStateForAction(enhancedRouter, state, {type: CONST.NAVIGATION.ACTION_TYPE.PUSH_PARAMS, payload: {params: {tab: 'expenses'}}});
+        // Tap Reports
+        state = getTestStateForAction(enhancedRouter, state, {type: CONST.NAVIGATION.ACTION_TYPE.PUSH_PARAMS, payload: {params: {tab: 'reports'}}});
+
+        expect(getStringParam(state.routes.at(0), 'tab')).toBe('reports');
+        expect(state.history).toHaveLength(3);
+
+        // Android hardware back press checks canGoBack() (dry run) before dispatching goBack()
+        const canGoBackResult = enhancedRouter.getStateForAction(state, CommonActions.goBack(), CONFIG_OPTIONS);
+        expect(canGoBackResult).not.toBeNull();
+
+        // Now goBack is dispatched with the original state
+        state = getTestStateForAction(enhancedRouter, state, CommonActions.goBack());
+
+        // It MUST navigate to Expenses, NOT skip to initial Reports!
+        expect(getStringParam(state.routes.at(0), 'tab')).toBe('expenses');
+    });
+
+    it('repeated back navigation with canGoBack checks steps backward through tab history to initial tab then exits', () => {
+        const factory = createMockRouterFactory();
+        const enhancedRouter = addPushParamsRouterExtension(factory)(createMock<PlatformStackRouterOptions>({}));
+
+        const initial = makeRoute('Search', 'search-1', {tab: 'reports'});
+        let state: TestState = makeState([initial], {history: [{...initial}] satisfies CustomHistoryEntry[]});
+
+        state = getTestStateForAction(enhancedRouter, state, {type: CONST.NAVIGATION.ACTION_TYPE.PUSH_PARAMS, payload: {params: {tab: 'expenses'}}});
+        state = getTestStateForAction(enhancedRouter, state, {type: CONST.NAVIGATION.ACTION_TYPE.PUSH_PARAMS, payload: {params: {tab: 'reports'}}});
+
+        // 1st back: Reports -> Expenses
+        expect(enhancedRouter.getStateForAction(state, CommonActions.goBack(), CONFIG_OPTIONS)).not.toBeNull();
+        state = getTestStateForAction(enhancedRouter, state, CommonActions.goBack());
+        expect(getStringParam(state.routes.at(0), 'tab')).toBe('expenses');
+
+        // 2nd back: Expenses -> initial Reports
+        expect(enhancedRouter.getStateForAction(state, CommonActions.goBack(), CONFIG_OPTIONS)).not.toBeNull();
+        state = getTestStateForAction(enhancedRouter, state, CommonActions.goBack());
+        expect(getStringParam(state.routes.at(0), 'tab')).toBe('reports');
+
+        // 3rd back: No more param snapshots for this route; underlying router handles stack pop (returns null since 1 route)
+        const exitState = enhancedRouter.getStateForAction(state, CommonActions.goBack(), CONFIG_OPTIONS);
+        expect(exitState).toBeNull();
+    });
 });
 
 describe('resolveCursorForReset (pure function)', () => {
