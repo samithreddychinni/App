@@ -411,6 +411,7 @@ describe('actions/Transaction', () => {
             });
 
             expect(updatedTransaction?.reportID).toBe(expenseReport?.reportID);
+            expect(updatedTransaction?.pendingFields?.reportID).toBe(CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE);
             expect(isMoneyRequestAction(updatedIOUReportActionOnSelfDMReport) ? getOriginalMessage(updatedIOUReportActionOnSelfDMReport)?.IOUTransactionID : undefined).toBe(undefined);
             expect(updatedTrackExpenseActionableWhisper).toBe(undefined);
             expect(updatedExpenseReport?.nonReimbursableTotal).toBe(-amount);

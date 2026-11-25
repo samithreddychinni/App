@@ -1323,7 +1323,7 @@ function getTransactionPendingAction(transaction: OnyxEntry<Transaction>): Pendi
     if (transaction?.pendingAction) {
         return transaction.pendingAction;
     }
-    const hasPendingFields = Object.keys(transaction?.pendingFields ?? {}).length > 0;
+    const hasPendingFields = Object.values(transaction?.pendingFields ?? {}).some(Boolean);
     return hasPendingFields ? CONST.RED_BRICK_ROAD_PENDING_ACTION.UPDATE : null;
 }
 

@@ -2731,6 +2731,14 @@ describe('TransactionUtils', () => {
             const result = TransactionUtils.getTransactionPendingAction(transaction);
             expect(result).toEqual(pendingAction);
         });
+        it('returns null when pendingFields only contains null values', () => {
+            const transaction = generateTransaction({
+                pendingFields: {reportID: null},
+                pendingAction: null,
+            });
+            const result = TransactionUtils.getTransactionPendingAction(transaction);
+            expect(result).toBeNull();
+        });
     });
 
     describe('isTransactionPendingDelete', () => {
