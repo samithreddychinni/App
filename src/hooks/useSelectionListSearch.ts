@@ -14,8 +14,14 @@ import useSearchResults from './useSearchResults';
  * @param noResultsMessage Shown above the list when a search matches nothing. Omit it to leave the list blank
  * instead, which is only appropriate when the caller renders its own message for that case.
  * @param shouldAlwaysShowSearch Show the search input whenever the list has data, matching on displayed text only.
+ * @param shouldMatchDisplayedTextOnly Match only displayed text and ignore item.value even when the search input follows the standard list item threshold.
  */
-function useSelectionListSearch<T extends ListItem & {value: string}>(data: T[], noResultsMessage?: string, shouldAlwaysShowSearch = false) {
+function useSelectionListSearch<T extends ListItem & {value: string}>(
+    data: T[],
+    noResultsMessage?: string,
+    shouldAlwaysShowSearch = false,
+    shouldMatchDisplayedTextOnly = false,
+) {
     const {translate} = useLocalize();
     // Snapshot the selected items on the first render that has data (handles async-loaded lists), then keep it frozen
     // so staged selections don't move the pin.
@@ -28,9 +34,10 @@ function useSelectionListSearch<T extends ListItem & {value: string}>(data: T[],
     // SelectionScreen skips the mount-scroll for searchable lists, so the pin must follow search visibility.
     const pinnedValues = data.length >= minLengthToShowSearch ? (initialSelectedValues ?? []) : [];
     const orderedData = moveInitialSelectionToTop(data, pinnedValues, minLengthToShowSearch);
+    const shouldFilterDisplayedTextOnly = shouldAlwaysShowSearch || shouldMatchDisplayedTextOnly;
     const [searchValue, setSearchValue, filteredData] = useSearchResults(
         orderedData,
-        (item, searchInput) => tokenizedSearch([item], searchInput, () => (shouldAlwaysShowSearch ? [item.text ?? ''] : [item.text ?? '', item.value])).length > 0,
+        (item, searchInput) => tokenizedSearch([item], searchInput, () => (shouldFilterDisplayedTextOnly ? [item.text ?? ''] : [item.text ?? '', item.value])).length > 0,
         undefined,
         undefined,
         minLengthToShowSearch,

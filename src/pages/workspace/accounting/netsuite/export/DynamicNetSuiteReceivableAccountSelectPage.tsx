@@ -5,6 +5,7 @@ import SelectionScreen from '@components/SelectionScreen';
 import useDynamicBackPath from '@hooks/useDynamicBackPath';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteReceivableAccount} from '@libs/actions/connections/NetSuiteCommands';
@@ -35,6 +36,7 @@ function DynamicNetSuiteReceivableAccountSelectPage({policy}: WithPolicyConnecti
     const netsuiteReceivableAccountOptions: SelectorType[] = getNetSuiteReceivableAccountOptions(policy ?? undefined, config?.receivableAccount);
 
     const initiallyFocusedOptionKey = netsuiteReceivableAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteReceivableAccountOptions, translate('common.noResultsFound'), false, true);
 
     const goBack = () => {
         Navigation.goBack(backPath);
@@ -64,7 +66,10 @@ function DynamicNetSuiteReceivableAccountSelectPage({policy}: WithPolicyConnecti
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteReceivableAccountSelectPage"
-            data={netsuiteReceivableAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateReceivableAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={goBack}

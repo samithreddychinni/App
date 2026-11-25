@@ -5,6 +5,7 @@ import SelectionScreen from '@components/SelectionScreen';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
 import usePermissions from '@hooks/usePermissions';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteTaxPostingAccount} from '@libs/actions/connections/NetSuiteCommands';
@@ -44,6 +45,7 @@ function NetSuiteTaxPostingAccountSelectPage({policy}: WithPolicyConnectionsProp
     const netsuiteTaxAccountOptions: SelectorType[] = getNetSuiteTaxAccountOptions(policy ?? undefined, selectedSubsidiary?.country, config?.taxPostingAccount);
 
     const initiallyFocusedOptionKey = netsuiteTaxAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteTaxAccountOptions, translate('common.noResultsFound'), false, true);
 
     const updateTaxAccount = ({value}: SelectorType) => {
         if (config?.taxPostingAccount !== value && policyID) {
@@ -69,7 +71,10 @@ function NetSuiteTaxPostingAccountSelectPage({policy}: WithPolicyConnectionsProp
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteTaxPostingAccountSelectPage"
-            data={netsuiteTaxAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateTaxAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={() => Navigation.goBack(netSuiteExportBackPath)}

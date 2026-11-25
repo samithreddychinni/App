@@ -5,6 +5,7 @@ import Text from '@components/Text';
 
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteSubsidiary} from '@libs/actions/connections/NetSuiteCommands';
@@ -43,6 +44,8 @@ function NetSuiteSubsidiarySelector({policy}: WithPolicyConnectionsProps) {
             isSelected: subsidiary.name === currentSubsidiaryName,
             value: subsidiary.name,
         })) ?? [];
+
+    const {filteredData, textInputOptions} = useSelectionListSearch(subsidiaryListSections, translate('common.noResultsFound'), false, true);
 
     const updateSubsidiary = ({keyForList, value}: SelectorType) => {
         if (!keyForList || keyForList === currentSubsidiaryID) {
@@ -86,7 +89,10 @@ function NetSuiteSubsidiarySelector({policy}: WithPolicyConnectionsProps) {
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteSubsidiarySelector"
-            data={subsidiaryListSections}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             connectionName={CONST.POLICY.CONNECTIONS.NAME.NETSUITE}
             onSelectRow={updateSubsidiary}
             initiallyFocusedOptionKey={netsuiteConfig?.subsidiaryID ?? subsidiaryListSections?.at(0)?.keyForList}

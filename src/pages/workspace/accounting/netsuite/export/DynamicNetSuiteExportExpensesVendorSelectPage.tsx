@@ -5,6 +5,7 @@ import SelectionScreen from '@components/SelectionScreen';
 import useDynamicBackPath from '@hooks/useDynamicBackPath';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteDefaultVendor} from '@libs/actions/connections/NetSuiteCommands';
@@ -54,6 +55,7 @@ function DynamicNetSuiteExportExpensesVendorSelectPage({policy}: WithPolicyConne
     const netsuiteVendorOptions: SelectorType[] = shouldShowClearOption ? [clearOption, ...vendorOptions] : vendorOptions;
 
     const initiallyFocusedOptionKey = netsuiteVendorOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteVendorOptions, translate('common.noResultsFound'), true);
 
     const goBack = () => {
         Navigation.goBack(backPath);
@@ -87,7 +89,10 @@ function DynamicNetSuiteExportExpensesVendorSelectPage({policy}: WithPolicyConne
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteExportExpensesVendorSelectPage"
-            data={netsuiteVendorOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateDefaultVendor}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={goBack}

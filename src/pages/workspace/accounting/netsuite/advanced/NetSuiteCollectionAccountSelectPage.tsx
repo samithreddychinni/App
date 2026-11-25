@@ -5,6 +5,7 @@ import Text from '@components/Text';
 
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteCollectionAccount} from '@libs/actions/connections/NetSuiteCommands';
@@ -37,6 +38,7 @@ function NetSuiteCollectionAccountSelectPage({policy}: WithPolicyConnectionsProp
     const netsuiteCollectionAccountOptions: SelectorType[] = getNetSuiteCollectionAccountOptions(policy ?? undefined, config?.collectionAccount);
 
     const initiallyFocusedOptionKey = netsuiteCollectionAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteCollectionAccountOptions, translate('common.noResultsFound'), false, true);
 
     const updateCollectionAccount = ({value}: SelectorType) => {
         if (config?.collectionAccount !== value && policyID) {
@@ -69,7 +71,10 @@ function NetSuiteCollectionAccountSelectPage({policy}: WithPolicyConnectionsProp
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteCollectionAccountSelectPage"
             headerContent={headerContent}
-            data={netsuiteCollectionAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateCollectionAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={() => Navigation.goBack(ROUTES.POLICY_ACCOUNTING_NETSUITE_ADVANCED.getRoute(policyID))}

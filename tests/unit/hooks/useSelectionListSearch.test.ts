@@ -8,6 +8,7 @@ jest.mock('@hooks/useLocalize', () => ({
     __esModule: true,
     default: () => ({translate: (key: string) => key}),
 }));
+jest.mock('@libs/Log');
 
 type Item = {value: string; text: string; keyForList: string; isSelected?: boolean};
 
@@ -266,5 +267,41 @@ describe('useSelectionListSearch', () => {
 
         // Then the query is cleared so the empty-state view is not suppressed by a hidden query
         expect(result.current.textInputOptions.value).toBe('');
+    });
+
+    it('hides the search input on a short list when shouldMatchDisplayedTextOnly is true and shouldAlwaysShowSearch is false', () => {
+        // Given a short list below the item-limit threshold
+        const data = buildItems(5, 0);
+
+        // When the hook runs with shouldMatchDisplayedTextOnly enabled
+        const {result} = renderHook(() => useSelectionListSearch(data, 'common.noResultsFound', false, true));
+
+        // Then the search input is hidden because the standard list limit applies
+        expect(result.current.textInputOptions.label).toBeUndefined();
+    });
+
+    it('matches only displayed text and ignores internal item values when shouldMatchDisplayedTextOnly is true at or above threshold', () => {
+        // Given a long list where one item has an internal ID value different from its displayed text
+        const data: Item[] = [
+            ...buildItems(12, 0),
+            {value: 'internal-id-40', text: 'Accounts Payable', keyForList: 'internal-id-40'},
+        ];
+        const {result} = renderHook(() => useSelectionListSearch(data, 'common.noResultsFound', false, true));
+
+        // Then the search input is visible
+        expect(result.current.textInputOptions.label).toBe('common.search');
+
+        // When searching for the hidden internal ID substring
+        searchAndSettle(result.current.textInputOptions.onChangeText, 'internal-id-40');
+
+        // Then no match is returned because value is excluded from search
+        expect(result.current.filteredData).toEqual([]);
+        expect(result.current.textInputOptions.headerMessage).toBe('common.noResultsFound');
+
+        // When searching for the displayed text
+        searchAndSettle(result.current.textInputOptions.onChangeText, 'Accounts Payable');
+
+        // Then the item matches
+        expect(result.current.filteredData).toEqual([{value: 'internal-id-40', text: 'Accounts Payable', keyForList: 'internal-id-40'}]);
     });
 });

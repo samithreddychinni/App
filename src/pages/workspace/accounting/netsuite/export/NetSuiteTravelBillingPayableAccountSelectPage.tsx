@@ -1,5 +1,8 @@
 import type {SelectorType} from '@components/SelectionScreen';
 
+import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
+
 import {updateNetSuiteTravelBillingPayableAccount} from '@libs/actions/connections/NetSuiteCommands';
 import {getLatestErrorField} from '@libs/ErrorUtils';
 import {settingsPendingAction} from '@libs/PolicyUtils';
@@ -18,6 +21,7 @@ import ROUTES from '@src/ROUTES';
 import React from 'react';
 
 function NetSuiteTravelBillingPayableAccountSelectPage({policy}: WithPolicyConnectionsProps) {
+    const {translate} = useLocalize();
     const {payableList} = policy?.connections?.netsuite?.options?.data ?? {};
     const config = policy?.connections?.netsuite?.options?.config;
 
@@ -31,6 +35,8 @@ function NetSuiteTravelBillingPayableAccountSelectPage({policy}: WithPolicyConne
             isSelected: account.id === config?.travelInvoicingPayableAccountID,
         })) ?? [];
 
+    const {filteredData, textInputOptions} = useSelectionListSearch(data, translate('common.noResultsFound'), false, true);
+
     const selectAccount = (row: SelectorType<string>) => {
         if (row.value !== config?.travelInvoicingPayableAccountID) {
             updateNetSuiteTravelBillingPayableAccount(policyID, row.value, config?.travelInvoicingPayableAccountID);
@@ -42,7 +48,10 @@ function NetSuiteTravelBillingPayableAccountSelectPage({policy}: WithPolicyConne
         <TravelBillingPayableAccountSelectPage
             policyID={policyID}
             displayName="NetSuiteTravelBillingPayableAccountSelectPage"
-            data={data}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            initiallyFocusedOptionKey={data.find((option) => option.isSelected)?.keyForList}
             connectionName={CONST.POLICY.CONNECTIONS.NAME.NETSUITE}
             emptyStateTitle="workspace.netsuite.noAccountsFound"
             emptyStateSubtitle="workspace.netsuite.noAccountsFoundDescription"

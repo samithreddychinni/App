@@ -1,5 +1,5 @@
 import BlockingView from '@components/BlockingViews/BlockingView';
-import type {SelectorType} from '@components/SelectionScreen';
+import type {SelectionScreenProps, SelectorType} from '@components/SelectionScreen';
 import SelectionScreen from '@components/SelectionScreen';
 
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
@@ -34,6 +34,9 @@ type TravelBillingPayableAccountSelectPageProps = {
     onSelect: (row: SelectorType<string>) => void;
     onBack: () => void;
     onClose: () => void;
+    textInputOptions?: SelectionScreenProps['textInputOptions'];
+    shouldShowListEmptyContent?: boolean;
+    initiallyFocusedOptionKey?: string;
 };
 
 function TravelBillingPayableAccountSelectPage({
@@ -52,6 +55,9 @@ function TravelBillingPayableAccountSelectPage({
     onSelect,
     onBack,
     onClose,
+    textInputOptions,
+    shouldShowListEmptyContent,
+    initiallyFocusedOptionKey,
 }: TravelBillingPayableAccountSelectPageProps) {
     const {translate} = useLocalize();
     const styles = useThemeStyles();
@@ -79,7 +85,9 @@ function TravelBillingPayableAccountSelectPage({
             data={data}
             onSelectRow={onSelect}
             shouldSingleExecuteRowSelect
-            initiallyFocusedOptionKey={data.find((option) => option.isSelected)?.keyForList}
+            initiallyFocusedOptionKey={initiallyFocusedOptionKey ?? data.find((option) => option.isSelected)?.keyForList}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={shouldShowListEmptyContent}
             listEmptyContent={listEmptyContent}
             connectionName={connectionName}
             onBackButtonPress={onBack}

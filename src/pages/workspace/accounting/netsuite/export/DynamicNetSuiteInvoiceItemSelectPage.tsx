@@ -5,6 +5,7 @@ import SelectionScreen from '@components/SelectionScreen';
 import useDynamicBackPath from '@hooks/useDynamicBackPath';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteInvoiceItem} from '@libs/actions/connections/NetSuiteCommands';
@@ -36,6 +37,7 @@ function DynamicNetSuiteInvoiceItemSelectPage({policy}: WithPolicyConnectionsPro
     const netsuiteInvoiceItemOptions: SelectorType[] = getNetSuiteInvoiceItemOptions(policy ?? undefined, config?.invoiceItem);
 
     const initiallyFocusedOptionKey = netsuiteInvoiceItemOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteInvoiceItemOptions, translate('common.noResultsFound'), false, true);
 
     const goBack = () => {
         Navigation.goBack(backPath);
@@ -65,7 +67,10 @@ function DynamicNetSuiteInvoiceItemSelectPage({policy}: WithPolicyConnectionsPro
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="DynamicNetSuiteInvoiceItemSelectPage"
-            data={netsuiteInvoiceItemOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateInvoiceItem}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={goBack}

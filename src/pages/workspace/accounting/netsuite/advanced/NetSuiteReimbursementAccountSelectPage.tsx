@@ -5,6 +5,7 @@ import Text from '@components/Text';
 
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteReimbursementAccountID} from '@libs/actions/connections/NetSuiteCommands';
@@ -37,6 +38,7 @@ function NetSuiteReimbursementAccountSelectPage({policy}: WithPolicyConnectionsP
     const netsuiteReimbursableAccountOptions: SelectorType[] = getNetSuiteReimbursableAccountOptions(policy ?? undefined, config?.reimbursementAccountID);
 
     const initiallyFocusedOptionKey = netsuiteReimbursableAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteReimbursableAccountOptions, translate('common.noResultsFound'), false, true);
 
     const updateReimbursementAccount = ({value}: SelectorType) => {
         if (config?.reimbursementAccountID !== value && policyID) {
@@ -69,7 +71,10 @@ function NetSuiteReimbursementAccountSelectPage({policy}: WithPolicyConnectionsP
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteReimbursementAccountSelectPage"
             headerContent={headerContent}
-            data={netsuiteReimbursableAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateReimbursementAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={() => Navigation.goBack(ROUTES.POLICY_ACCOUNTING_NETSUITE_ADVANCED.getRoute(policyID))}

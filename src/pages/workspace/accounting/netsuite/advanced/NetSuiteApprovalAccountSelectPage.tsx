@@ -5,6 +5,7 @@ import Text from '@components/Text';
 
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuiteApprovalAccount} from '@libs/actions/connections/NetSuiteCommands';
@@ -37,6 +38,7 @@ function NetSuiteApprovalAccountSelectPage({policy}: WithPolicyConnectionsProps)
     const netsuiteApprovalAccountOptions: SelectorType[] = getNetSuiteApprovalAccountOptions(policy ?? undefined, config?.approvalAccount, translate);
 
     const initiallyFocusedOptionKey = netsuiteApprovalAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuiteApprovalAccountOptions, translate('common.noResultsFound'), false, true);
 
     const updateCollectionAccount = ({value}: SelectorType) => {
         if (config?.approvalAccount !== value && policyID) {
@@ -70,7 +72,10 @@ function NetSuiteApprovalAccountSelectPage({policy}: WithPolicyConnectionsProps)
             displayName="NetSuiteApprovalAccountSelectPage"
             headerContent={headerContent}
             titleNumberOfLines={2}
-            data={netsuiteApprovalAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updateCollectionAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={() => Navigation.goBack(ROUTES.POLICY_ACCOUNTING_NETSUITE_ADVANCED.getRoute(policyID))}

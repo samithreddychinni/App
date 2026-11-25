@@ -5,6 +5,7 @@ import SelectionScreen from '@components/SelectionScreen';
 import useDynamicBackPath from '@hooks/useDynamicBackPath';
 import {useMemoizedLazyIllustrations} from '@hooks/useLazyAsset';
 import useLocalize from '@hooks/useLocalize';
+import useSelectionListSearch from '@hooks/useSelectionListSearch';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {updateNetSuitePayableAcct, updateNetSuiteReimbursablePayableAccount} from '@libs/actions/connections/NetSuiteCommands';
@@ -47,6 +48,7 @@ function DynamicNetSuiteExportExpensesPayableAccountSelectPage({policy}: WithPol
     const netsuitePayableAccountOptions: SelectorType[] = getNetSuitePayableAccountOptions(policy ?? undefined, currentPayableAccountID);
 
     const initiallyFocusedOptionKey = netsuitePayableAccountOptions?.find((mode) => mode.isSelected)?.keyForList;
+    const {filteredData, textInputOptions} = useSelectionListSearch(netsuitePayableAccountOptions, translate('common.noResultsFound'), false, true);
 
     const goBack = () => {
         Navigation.goBack(backPath);
@@ -80,7 +82,10 @@ function DynamicNetSuiteExportExpensesPayableAccountSelectPage({policy}: WithPol
             accessVariants={[CONST.POLICY.ACCESS_VARIANTS.ADMIN, CONST.POLICY.ACCESS_VARIANTS.CONTROL]}
             featureName={CONST.POLICY.MORE_FEATURES.ARE_CONNECTIONS_ENABLED}
             displayName="NetSuiteExportExpensesPayableAccountSelectPage"
-            data={netsuitePayableAccountOptions}
+            data={filteredData}
+            textInputOptions={textInputOptions}
+            shouldShowListEmptyContent={!textInputOptions.value}
+            shouldSingleExecuteRowSelect
             onSelectRow={updatePayableAccount}
             initiallyFocusedOptionKey={initiallyFocusedOptionKey}
             onBackButtonPress={goBack}
