@@ -327,4 +327,21 @@ describe('RangeDatePicker', () => {
         // Then nothing is selected, because only days up to MAX_DATE can be selected
         expect(onFromSelected).not.toHaveBeenCalled();
     });
+
+    test('disables next-year navigation when maxDate is set to the current year', () => {
+        // Given a RangeDatePicker with maxDate set to this year
+        const thisYearDate = dayOfThisMonth(15);
+        render(
+            <RangeDatePicker
+                fromValue={toStoredDate(thisYearDate)}
+                onFromSelected={jest.fn()}
+                onToSelected={jest.fn()}
+                maxDate={thisYearDate}
+            />,
+        );
+
+        // Then the next-year arrow is disabled because navigation past maxDate is capped
+        expect(screen.getAllByTestId('next-year-arrow').at(FROM_CALENDAR_INDEX)).toBeDisabled();
+        expect(screen.getAllByTestId('next-year-arrow').at(TO_CALENDAR_INDEX)).toBeDisabled();
+    });
 });

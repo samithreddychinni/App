@@ -42,6 +42,9 @@ type DateSelectPopupProps = {
     setPopoverWidth?: (width: number | undefined) => void;
 
     applySentryLabel: SentryLabel;
+
+    /** The maximum selectable date */
+    maxDate?: Date;
 };
 
 function DateSelectPopup({
@@ -54,6 +57,7 @@ function DateSelectPopup({
     onChange,
     setPopoverWidth,
     applySentryLabel,
+    maxDate,
 }: DateSelectPopupProps) {
     // eslint-disable-next-line rulesdir/prefer-shouldUseNarrowLayout-instead-of-isSmallScreenWidth
     const {isSmallScreenWidth, isInLandscapeMode} = useResponsiveLayout();
@@ -152,6 +156,7 @@ function DateSelectPopup({
                         allowedCustomDateModifiers={allowedCustomDateModifiers}
                         onDateValuesChange={updateRangeText}
                         onRangeValidationErrorChange={setShouldShowRangeError}
+                        maxDate={maxDate}
                     />
                     {shouldShowRangeError && (
                         <FormHelpMessage
@@ -214,6 +219,7 @@ function DateSelectPopup({
                     allowedCustomDateModifiers={allowedCustomDateModifiers}
                     onDateValuesChange={updateRangeText}
                     onRangeValidationErrorChange={setShouldShowRangeError}
+                    maxDate={maxDate}
                 />
             </ScrollView>
             {shouldShowRangeError && (

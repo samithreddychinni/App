@@ -13,6 +13,7 @@ import {buildDateFormValues} from '@pages/Insights/insightsQueries';
 
 import CONST from '@src/CONST';
 
+import {endOfYear} from 'date-fns';
 import React from 'react';
 
 import type {InsightsControlProps} from './insightsControls';
@@ -21,6 +22,7 @@ import INSIGHTS_CONTROL_ANCHOR_ALIGNMENT from './insightsControls';
 
 const INSIGHTS_ALLOWED_CUSTOM_DATE_MODIFIERS: readonly CustomDateModifier[] = [CONST.SEARCH.DATE_MODIFIERS.ON];
 const INSIGHTS_DATE_PRESETS = getDatePresets(CONST.SEARCH.SYNTAX_FILTER_KEYS.DATE, false);
+const INSIGHTS_MAX_DATE = endOfYear(new Date());
 
 function InsightsDateControl({value, onChange}: InsightsControlProps<InsightsFilters['date']>) {
     const {translate, dateFnsLocale} = useLocalize();
@@ -36,6 +38,7 @@ function InsightsDateControl({value, onChange}: InsightsControlProps<InsightsFil
             closeOverlay={closeOverlay}
             setPopoverWidth={setPopoverWidth}
             applySentryLabel={CONST.SENTRY_LABEL.INSIGHTS.CONTROL_POPUP_APPLY.DATE}
+            maxDate={INSIGHTS_MAX_DATE}
         />
     );
 
