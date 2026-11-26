@@ -116,6 +116,7 @@ function DynamicEditPromptPage({route}: DynamicEditPromptPageProps) {
                 submitButtonText={translate('common.save')}
                 style={[styles.flex1, styles.ph5]}
                 shouldUseScrollView={shouldUseScrollableLayout}
+                shouldScrollChildToFocus={false}
                 submitFlexEnabled={false}
                 enabledWhenOffline
                 shouldHideFixErrorsAlert

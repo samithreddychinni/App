@@ -290,6 +290,7 @@ function ProfilePage() {
                 contentContainerStyle={safeAreaPaddingBottomStyle}
                 scrollEnabled={scrollEnabled}
                 keyboardShouldPersistTaps="handled"
+                scrollsChildToFocus={!isAgentAccount}
             >
                 <View style={[styles.flex1, shouldUseNarrowLayout ? styles.workspaceSectionMobile : styles.workspaceSection]}>
                     <Section

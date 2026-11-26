@@ -268,6 +268,7 @@ function DynamicAddAgentPage({route}: DynamicAddAgentPageProps) {
                     submitButtonText={translate('addAgentPage.createAgent')}
                     style={[styles.flex1, styles.ph5]}
                     shouldUseScrollView={shouldUseScrollableLayout}
+                    shouldScrollChildToFocus={false}
                     submitFlexEnabled={false}
                     shouldHideFixErrorsAlert
                     enabledWhenOffline
