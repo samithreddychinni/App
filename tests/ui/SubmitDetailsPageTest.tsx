@@ -2,16 +2,26 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: jest.fn(() => false),
+    },
+}));
+
 import {act, fireEvent, render, screen} from '@testing-library/react-native';
 
 import {readFileAsync} from '@libs/fileDownload/FileUtils';
 import getCurrentPosition from '@libs/getCurrentPosition';
 import getIsNarrowLayout from '@libs/getIsNarrowLayout';
 import Log from '@libs/Log';
+import isSearchTopmostFullScreenRoute from '@libs/Navigation/helpers/isSearchTopmostFullScreenRoute';
 import Navigation from '@libs/Navigation/Navigation';
 import ReceiptStorage from '@libs/ReceiptStorage';
 import {getReportOrDraftReport} from '@libs/ReportUtils';
 import {Scheduler} from '@libs/Scheduler';
+import {getSearchKeyForDataType} from '@libs/SearchKeyUtils';
+import {buildCannedSearchQuery, getCurrentSearchQueryJSON} from '@libs/SearchQueryUtils';
 
 import SubmitDetailsPage from '@pages/Share/SubmitDetailsPage';
 
@@ -35,6 +45,15 @@ import createMock from '../utils/createMock';
 import {getShowConfirmModalOption, mockShowConfirmModal, resetMockConfirmModal, resolveShowConfirmModal} from '../utils/mockUseConfirmModal';
 import waitForBatchedUpdates from '../utils/waitForBatchedUpdates';
 import waitForBatchedUpdatesWithAct from '../utils/waitForBatchedUpdatesWithAct';
+
+jest.mock('@libs/Navigation/helpers/isSearchTopmostFullScreenRoute', () => jest.fn(() => false));
+jest.mock('@libs/SearchQueryUtils', () => {
+    const actual = jest.requireActual<typeof import('@libs/SearchQueryUtils')>('@libs/SearchQueryUtils');
+    return {
+        ...actual,
+        getCurrentSearchQueryJSON: jest.fn(actual.getCurrentSearchQueryJSON),
+    };
+});
 
 type GetReportOrDraftReportFn = typeof getReportOrDraftReport;
 type ReportUtilsActual = Record<string, unknown> & {getReportOrDraftReport: GetReportOrDraftReportFn};
@@ -209,6 +228,10 @@ jest.mock('@components/MoneyRequestConfirmationList/variants/ScanConfirmationLis
 });
 
 const SHARED_REPORT_ID = 'report-share-1';
+const EXPENSES_SEARCH_ROUTE = ROUTES.SEARCH_ROOT.getRoute({
+    query: buildCannedSearchQuery({type: CONST.SEARCH.DATA_TYPES.EXPENSE}),
+    searchKey: getSearchKeyForDataType(CONST.SEARCH.DATA_TYPES.EXPENSE),
+});
 const ACCOUNT_ID = 1;
 const PARTICIPANT_ACCOUNT_ID = 2;
 
@@ -305,6 +328,8 @@ function renderSubmitDetailsPage() {
 }
 
 function resetNavigationMocksForSubmitDetailsPageTests() {
+    jest.mocked(isSearchTopmostFullScreenRoute).mockReturnValue(false);
+    jest.mocked(getCurrentSearchQueryJSON).mockReturnValue(undefined);
     jest.mocked(Navigation.getTopmostReportId).mockReturnValue('report-share-1');
     jest.mocked(getIsNarrowLayout).mockReturnValue(true);
     jest.mocked(Navigation.getIsFullscreenPreInsertedUnderRHP).mockReturnValue(false);
@@ -487,9 +512,9 @@ describe('SubmitDetailsPage', () => {
         await renderAndConfirm();
 
         // Then the pre-mounted destination is revealed instead of dismissing over it
-        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID));
+        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(EXPENSES_SEARCH_ROUTE);
         expect(Navigation.revealRouteBeforeDismissingModal).toHaveBeenCalledWith(
-            ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID),
+            EXPENSES_SEARCH_ROUTE,
             expect.objectContaining({afterTransition: expect.any(Function)}),
         );
         expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(false);
@@ -502,64 +527,40 @@ describe('SubmitDetailsPage', () => {
 
         await renderAndConfirm();
 
-        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID));
+        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(EXPENSES_SEARCH_ROUTE);
         expect(Navigation.dismissModal).toHaveBeenCalledWith(expect.objectContaining({afterTransition: expect.any(Function)}));
         expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(false);
         expect(TrackExpense.requestMoney).toHaveBeenCalled();
     });
 
-    // Error #6 — when the destination chat is already topmost, submit should skip pre-mount reveal and let
-    // cleanupAndNavigateAfterExpenseCreate handle navigation.
-    it('skips pre-mount reveal and passes shouldNavigate true to cleanup when the destination report is already topmost', async () => {
+    // Error #7 — pre-mount to Spend > Expenses does not depend on COLLECTION.REPORT having the destination report.
+    it('pre-mounts and navigates to Spend > Expenses even when the destination report is missing from COLLECTION.REPORT', async () => {
+        jest.mocked(Navigation.getTopmostReportId).mockReturnValue(undefined);
+        await act(async () => {
+            await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${SHARED_REPORT_ID}`, null);
+        });
+
         await renderAndConfirm();
 
-        expect(Navigation.revealRouteBeforeDismissingModal).not.toHaveBeenCalled();
-        expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(true);
+        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(EXPENSES_SEARCH_ROUTE);
+        expect(Navigation.dismissModal).toHaveBeenCalledWith(expect.objectContaining({afterTransition: expect.any(Function)}));
+        expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(false);
         expect(TrackExpense.requestMoney).toHaveBeenCalled();
     });
 
-    // Error #7 — pre-mount only runs when the destination report exists in COLLECTION.REPORT (not draft-only),
-    // otherwise reveal would mount an empty screen behind the share modal.
-    it('does not pre-mount when the destination report is missing from COLLECTION.REPORT', async () => {
-        jest.mocked(Navigation.getTopmostReportId).mockReturnValue(undefined);
-        await act(async () => {
-            await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${SHARED_REPORT_ID}`, null);
-        });
+    it('skips pre-insert and dismisses modal when already on Spend > Expenses', async () => {
+        jest.mocked(isSearchTopmostFullScreenRoute).mockReturnValue(true);
+        jest.mocked(getCurrentSearchQueryJSON).mockReturnValue({type: CONST.SEARCH.DATA_TYPES.EXPENSE} as ReturnType<typeof getCurrentSearchQueryJSON>);
 
         await renderAndConfirm();
 
         expect(Navigation.preInsertFullscreenUnderRHP).not.toHaveBeenCalled();
-        expect(Navigation.revealRouteBeforeDismissingModal).not.toHaveBeenCalled();
+        expect(Navigation.dismissModal).toHaveBeenCalledWith(expect.objectContaining({afterTransition: expect.any(Function)}));
         expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(false);
-    });
+        expect(TrackExpense.requestMoney).toHaveBeenCalled();
 
-    // Error #7b — after a missing-destination submit, the optimistic report landing must not arm
-    // usePreMountDestination (narrow pre-insert) alongside the pending reveal — that dual-nav race
-    // leaves a stale pre-insert flag under the RHP.
-    it('does not arm pre-mount after the optimistic destination lands on the pending-navigation path', async () => {
-        jest.mocked(Navigation.getTopmostReportId).mockReturnValue(undefined);
-        await act(async () => {
-            await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${SHARED_REPORT_ID}`, null);
-        });
-
-        await renderAndConfirm();
-
-        expect(Navigation.preInsertFullscreenUnderRHP).not.toHaveBeenCalled();
-        expect(jest.mocked(cleanupAndNavigateAfterExpenseCreate).mock.calls.at(0)?.[0]?.shouldNavigate).toBe(false);
-
-        // Simulate the expense create writing the destination into COLLECTION.REPORT (requestMoney is mocked).
-        const landedReport = createTestReport();
-        await act(async () => {
-            await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${SHARED_REPORT_ID}`, landedReport);
-        });
-        await waitForBatchedUpdatesWithAct();
-
-        expect(Navigation.preInsertFullscreenUnderRHP).not.toHaveBeenCalled();
-        expect(Navigation.revealRouteBeforeDismissingModal).toHaveBeenCalledTimes(1);
-        expect(Navigation.revealRouteBeforeDismissingModal).toHaveBeenCalledWith(
-            ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID),
-            expect.objectContaining({afterTransition: expect.any(Function)}),
-        );
+        jest.mocked(isSearchTopmostFullScreenRoute).mockReturnValue(false);
+        jest.mocked(getCurrentSearchQueryJSON).mockReset();
     });
 
     // Error #8 — backing out before submit must tear down any pre-inserted destination route before goBack,
@@ -570,7 +571,7 @@ describe('SubmitDetailsPage', () => {
         renderSubmitDetailsPage();
         await waitForBatchedUpdatesWithAct();
 
-        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID));
+        expect(Navigation.preInsertFullscreenUnderRHP).toHaveBeenCalledWith(EXPENSES_SEARCH_ROUTE);
 
         fireEvent.press(screen.getByTestId('mock-back-button'));
         await waitForBatchedUpdatesWithAct();
@@ -600,42 +601,6 @@ describe('SubmitDetailsPage', () => {
 
         // Fire the callback after unmount—should not crash even though component is gone.
         expect(() => pendingRevealCallback?.()).not.toThrow();
-    });
-
-    // Error #10 — if optimistic report lands under wrong ID, submit must navigate to intended destination, not stray.
-    it('navigates to intended reportID even if optimistic report lands under different ID', async () => {
-        jest.useFakeTimers();
-        try {
-            jest.mocked(Navigation.getTopmostReportId).mockReturnValue(undefined);
-            await act(async () => {
-                await Onyx.set(`${ONYXKEYS.COLLECTION.REPORT}${SHARED_REPORT_ID}`, null);
-            });
-
-            const wrongReportID = 'report-wrong-id';
-
-            await renderAndConfirm();
-
-            // Simulate expense create landing a report under a different ID (e.g., due to conflict or dedupe).
-            const wrongReport = createTestReport();
-            wrongReport.reportID = wrongReportID;
-            jest.mocked(getReportOrDraftReport).mockReturnValue(wrongReport);
-            await act(async () => {
-                await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${wrongReportID}`, wrongReport);
-            });
-            await waitForBatchedUpdatesWithAct();
-
-            // Advance timers to trigger the fallback reveal timeout
-            jest.advanceTimersByTime(600);
-            await waitForBatchedUpdatesWithAct();
-
-            // Should navigate to the ORIGINAL intended report (SHARED_REPORT_ID), not the mismatched one.
-            expect(Navigation.revealRouteBeforeDismissingModal).toHaveBeenCalledWith(
-                ROUTES.REPORT_WITH_ID.getRoute(SHARED_REPORT_ID),
-                expect.objectContaining({afterTransition: expect.any(Function)}),
-            );
-        } finally {
-            jest.useRealTimers();
-        }
     });
 
     it('creates the shared expense with the position the share screen cached, without reading the device at submit', async () => {

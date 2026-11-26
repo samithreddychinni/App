@@ -44,6 +44,7 @@ import getCurrentPositionWithinCap from '@libs/getCurrentPosition/getCurrentPosi
 import getNonEmptyStringOnyxID from '@libs/getNonEmptyStringOnyxID';
 import {getDefaultReimbursableForPolicy, getExistingTransactionID, isLookingAroundSearchRoutingActive, resolveReportForMoneyRequest} from '@libs/IOUUtils';
 import cleanupAndNavigateAfterExpenseCreate from '@libs/Navigation/helpers/cleanupAndNavigateAfterExpenseCreate';
+import isSearchTopmostFullScreenRoute from '@libs/Navigation/helpers/isSearchTopmostFullScreenRoute';
 import Navigation from '@libs/Navigation/Navigation';
 import type {ShareNavigatorParamList} from '@libs/Navigation/types';
 import {rand64} from '@libs/NumberUtils';
@@ -53,13 +54,14 @@ import {hasOnlyPersonalPolicies as hasOnlyPersonalPoliciesUtil, resolveCurrentTa
 import ReceiptStorage from '@libs/ReceiptStorage';
 import {shouldValidateFile} from '@libs/ReceiptUtils';
 import {getReportOrDraftReport, isMoneyRequestReport, isSelfDM} from '@libs/ReportUtils';
+import {getSearchKeyForDataType} from '@libs/SearchKeyUtils';
+import {buildCannedSearchQuery, getCurrentSearchQueryJSON} from '@libs/SearchQueryUtils';
 import {cancelSpan, endSpan} from '@libs/telemetry/activeSpans';
 import {logReceiptAdoptFailed, logReceiptCaptured, logReceiptSubmitted, mintAndStampReceiptTraceId} from '@libs/telemetry/ReceiptObservability';
 import {cancelTracking} from '@libs/telemetry/submitFollowUpAction';
 import {getDefaultTaxCode, getIsFromGlobalCreate, getTaxValue, hasAllManuallyEnteredScanFields} from '@libs/TransactionUtils';
 
 import DraftWorkspaceOpener from '@pages/iou/request/step/confirmation/DraftWorkspaceOpener';
-import getSubmitExpensePreMountDestinationRoute from '@pages/iou/request/step/confirmation/getSubmitExpensePreMountDestinationRoute';
 
 import CONST from '@src/CONST';
 import ONYXKEYS from '@src/ONYXKEYS';
@@ -138,11 +140,6 @@ function SubmitDetailsPage({
     const personalPolicy = usePersonalPolicy();
     const [startLocationPermissionFlow, setStartLocationPermissionFlow] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
-    // Set when the destination report didn't exist at submit time (e.g. a brand-new recipient) — the expense create
-    // writes it optimistically, and we keep the confirm button in its loading state until it lands so dismissing doesn't flash the inbox.
-    const [pendingNavigationReportID, setPendingNavigationReportID] = useState<string | undefined>(undefined);
-    const [pendingNavigationReport] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT}${getNonEmptyStringOnyxID(pendingNavigationReportID)}`);
-    const hasStartedPendingNavigation = useRef(false);
     const formHasBeenSubmitted = useRef(false);
     const hasCalledReveal = useRef(false);
     const [userLocation] = useOnyx(ONYXKEYS.USER_LOCATION);
@@ -322,80 +319,16 @@ function SubmitDetailsPage({
         participantReportID: participant?.reportID,
     });
 
-    const hasNavigationDestination = !!transaction && !!postSubmitNavigationReportID;
-    // Empty draft skips REPORT_DRAFT fallback — report must be in COLLECTION.REPORT to render behind the share modal.
-    const destinationReportInCollection = hasNavigationDestination ? getReportOrDraftReport({reportID: postSubmitNavigationReportID, reportDraft: {}}) : undefined;
-    // Destination report isn't in COLLECTION.REPORT yet (e.g. a recipient with no existing chat) — it will only
-    // exist after the expense create writes it optimistically, so pre-mounting is impossible.
-    const isDestinationReportMissing = hasNavigationDestination && !destinationReportInCollection?.reportID;
-    // Keep pre-mount off while pending navigation owns the reveal — otherwise once the optimistic
-    // report lands, isDestinationReportMissing flips false and usePreMountDestination would schedule
-    // a narrow pre-insert alongside the pending revealRouteBeforeDismissingModal (dual nav).
-    const preMountDestinationRoute = getSubmitExpensePreMountDestinationRoute({
-        isTransactionReady: hasNavigationDestination && !isDestinationReportMissing && !pendingNavigationReportID,
-        destinationReportID: postSubmitNavigationReportID,
-        destinationReport: destinationReportInCollection,
-        isFromGlobalCreate: false,
-        canPreInsertSearch: false,
-        iouType,
-        isCreatingTrackExpense,
-        isSelfDMDestination: isSelfDM(report),
-        isOptimisticNewChatDestination: false,
-        isLookingAroundUser,
-        isMovingTransactionFromTrackExpense: false,
+    const destinationRoute = ROUTES.SEARCH_ROOT.getRoute({
+        query: buildCannedSearchQuery({type: CONST.SEARCH.DATA_TYPES.EXPENSE}),
+        searchKey: getSearchKeyForDataType(CONST.SEARCH.DATA_TYPES.EXPENSE),
     });
+    const isAlreadyOnExpensesSearch = !Navigation.getIsFullscreenPreInsertedUnderRHP() && isSearchTopmostFullScreenRoute() && getCurrentSearchQueryJSON()?.type === CONST.SEARCH.DATA_TYPES.EXPENSE;
+    const preMountDestinationRoute = transaction && !isAlreadyOnExpensesSearch ? destinationRoute : undefined;
 
     const {reveal: revealPreMountDestination, cleanupPreMount} = usePreMountDestination(preMountDestinationRoute, {
         shouldPreservePreInsertedRouteOnUnmount: () => hasCalledReveal.current,
     });
-
-    // Single entry point for the pending-navigation reveal — the ref guard makes it safe to call from either
-    // path below, so whichever fires first wins and the other becomes a no-op.
-    const revealPendingNavigation = (reportID: string) => {
-        if (hasStartedPendingNavigation.current) {
-            return;
-        }
-        hasStartedPendingNavigation.current = true;
-        Navigation.revealRouteBeforeDismissingModal(ROUTES.REPORT_WITH_ID.getRoute(reportID), {
-            afterTransition: () => {
-                setIsConfirming(false);
-            },
-        });
-    };
-
-    // Once the optimistically created destination report lands in Onyx, reveal it directly over the modal —
-    // navigating before it exists would dismiss to the inbox and flash it while the report screen mounts.
-    useEffect(() => {
-        if (!pendingNavigationReportID || !pendingNavigationReport?.reportID) {
-            return;
-        }
-        revealPendingNavigation(pendingNavigationReportID);
-    }, [pendingNavigationReportID, pendingNavigationReport?.reportID, revealPendingNavigation]);
-
-    // Fallback: if optimistic report lands under different ID, still reveal to intended destination after timeout.
-    useEffect(() => {
-        if (!pendingNavigationReportID || hasStartedPendingNavigation.current || pendingNavigationReport?.reportID) {
-            return;
-        }
-
-        const timeoutId = setTimeout(() => revealPendingNavigation(pendingNavigationReportID), 500);
-
-        return () => clearTimeout(timeoutId);
-    }, [pendingNavigationReportID, pendingNavigationReport?.reportID, revealPendingNavigation]);
-
-    // Timeout for pending report arrival — if optimistic write doesn't land within 5s, something's broken anyway.
-    // Fallback dismisses spinner and lets user navigate back without indefinite hang.
-    useEffect(() => {
-        if (!pendingNavigationReportID) {
-            return;
-        }
-
-        const timeoutId = setTimeout(() => {
-            setIsConfirming(false);
-        }, 5000);
-
-        return () => clearTimeout(timeoutId);
-    }, [pendingNavigationReportID]);
 
     const finishRequestAndNavigate = (receipt: Receipt, gpsPoint?: GpsPoint) => {
         if (!transaction || !participant) {
@@ -527,7 +460,7 @@ function SubmitDetailsPage({
             action: CONST.IOU.ACTION.CREATE,
             draftTransactionIDs,
             transactionID: optimisticTransactionID,
-            isFromGlobalCreate: getIsFromGlobalCreate(transaction),
+            isFromGlobalCreate: true,
             optimisticChatReportID: routeReportID,
             navigationReportID: postSubmitNavigationReportID,
             linkedTrackedExpenseReportAction: transaction.linkedTrackedExpenseReportAction,
@@ -544,41 +477,12 @@ function SubmitDetailsPage({
         // at cleanupAndNavigateAfterExpenseCreate when shouldNavigate: false.
         cancelTracking();
 
-        if (preMountDestinationRoute) {
-            performExpenseCreate();
-            hasCalledReveal.current = true;
-            revealPreMountDestination(() => {
-                cleanupAndNavigateAfterExpenseCreate({...cleanupParams, shouldNavigate: false});
-                setIsConfirming(false);
-            });
-            return;
-        }
-
-        // Pre-mount wasn't possible because the destination report doesn't exist yet. Create the expense without
-        // navigating — the optimistic write creates the report — and let the pending-navigation effect reveal it
-        // once it lands. isConfirming stays true until the reveal transition ends, so the confirm button keeps
-        // its loading state exactly like the pre-mounted path.
-        if (isDestinationReportMissing) {
-            runExpenseCreateAndCleanup(false);
-            setPendingNavigationReportID(postSubmitNavigationReportID);
-            return;
-        }
-
-        // Wide layout fallback: destination exists but is not topmost — reveal it via dismissal modal instead of pre-insert.
-        const topmostReportId = Navigation.getTopmostReportId();
-        if (topmostReportId !== postSubmitNavigationReportID) {
-            performExpenseCreate();
-            hasCalledReveal.current = true;
-            Navigation.revealRouteBeforeDismissingModal(ROUTES.REPORT_WITH_ID.getRoute(postSubmitNavigationReportID), {
-                afterTransition: () => {
-                    cleanupAndNavigateAfterExpenseCreate({...cleanupParams, shouldNavigate: false});
-                    setIsConfirming(false);
-                },
-            });
-            return;
-        }
-
-        runExpenseCreateAndCleanup(true);
+        performExpenseCreate();
+        hasCalledReveal.current = true;
+        revealPreMountDestination(() => {
+            cleanupAndNavigateAfterExpenseCreate({...cleanupParams, shouldNavigate: false});
+            setIsConfirming(false);
+        });
     };
 
     const onSuccess = (file: File, locationPermissionGranted?: boolean) => {
