@@ -4,6 +4,14 @@ import type {FullPolicySnapshot, Policy} from '@src/types/onyx';
 
 import type {OnyxCollection} from 'react-native-onyx';
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: jest.fn(() => false),
+    },
+}));
+jest.mock('@libs/Navigation/Navigation');
+
 import {
     createPolicyViolationVisibilitySelector,
     isCollectingDepositAccountsSelector,
@@ -256,6 +264,42 @@ describe('createTimeSensitiveAdminPoliciesSelector', () => {
 
         expect(createTimeSensitiveAdminPoliciesSelector(TEST_LOGIN, undefined)(policies).brokenConnections).toEqual([
             {policyID: 'policy1', policyName: 'Broken Xero', connectionName: CONST.POLICY.CONNECTIONS.NAME.XERO, integrationName: CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY.xero},
+        ]);
+    });
+
+    it('resolves provider displayName for broken Merge ATS connection', () => {
+        const brokenGreenhouse = createMock<Policy['connections']>({
+            merge_ats: {
+                lastSync: {isSuccessful: false, errorDate: '2026-08-01'},
+                config: {integration: 'greenhouse'},
+            },
+        });
+        const policies: OnyxCollection<Policy> = {
+            policy1: buildSelectorPolicy(1, {id: 'policy1', name: 'Greenhouse Workspace', role: CONST.POLICY.ROLE.ADMIN, connections: brokenGreenhouse}),
+        };
+
+        expect(createTimeSensitiveAdminPoliciesSelector(TEST_LOGIN, undefined)(policies).brokenConnections).toEqual([
+            {policyID: 'policy1', policyName: 'Greenhouse Workspace', connectionName: CONST.POLICY.CONNECTIONS.NAME.MERGE_ATS, integrationName: 'Greenhouse'},
+        ]);
+    });
+
+    it('falls back to default friendly name when Merge ATS provider is missing', () => {
+        const brokenMergeATS = createMock<Policy['connections']>({
+            merge_ats: {
+                lastSync: {isSuccessful: false, errorDate: '2026-08-01'},
+            },
+        });
+        const policies: OnyxCollection<Policy> = {
+            policy1: buildSelectorPolicy(1, {id: 'policy1', name: 'Unknown ATS Workspace', role: CONST.POLICY.ROLE.ADMIN, connections: brokenMergeATS}),
+        };
+
+        expect(createTimeSensitiveAdminPoliciesSelector(TEST_LOGIN, undefined)(policies).brokenConnections).toEqual([
+            {
+                policyID: 'policy1',
+                policyName: 'Unknown ATS Workspace',
+                connectionName: CONST.POLICY.CONNECTIONS.NAME.MERGE_ATS,
+                integrationName: CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY.merge_ats,
+            },
         ]);
     });
 

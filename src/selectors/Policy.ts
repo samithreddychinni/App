@@ -4,6 +4,7 @@ import {hasSynchronizationErrorMessage, isConnectionInProgress, isConnectionUnve
 import {getDisplayNameForWorkspace} from '@libs/actions/Policy/Policy';
 import isTeachersUnitePolicyID from '@libs/isTeachersUnitePolicyID';
 import {getConnectedHRProvider} from '@libs/merge/HRUtils';
+import {getConnectedATSProvider} from '@libs/merge/RecruitingUtils';
 import type {PolicyPaymentAttribution} from '@libs/PolicyPaymentUtils';
 import {
     canCreateExpensesOnPolicy,
@@ -249,10 +250,12 @@ const createTimeSensitiveAdminPoliciesSelector =
                 if (!hasSynchronizationErrorMessage(policy, connectionName, isSyncInProgress)) {
                     continue;
                 }
-                const integrationName =
-                    connectionName === CONST.POLICY.CONNECTIONS.NAME.MERGE_HR
-                        ? (getConnectedHRProvider(policy)?.displayName ?? CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY[connectionName])
-                        : CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY[connectionName];
+                let integrationName: string = CONST.POLICY.CONNECTIONS.NAME_USER_FRIENDLY[connectionName];
+                if (connectionName === CONST.POLICY.CONNECTIONS.NAME.MERGE_HR) {
+                    integrationName = getConnectedHRProvider(policy)?.displayName ?? integrationName;
+                } else if (connectionName === CONST.POLICY.CONNECTIONS.NAME.MERGE_ATS) {
+                    integrationName = getConnectedATSProvider(policy)?.displayName ?? integrationName;
+                }
                 result.brokenConnections.push({
                     policyID: policy.id,
                     policyName: policy.name,

@@ -34,7 +34,8 @@ function FixPolicyConnection({connectionName, policyID, policyName, integrationN
         : translate('homePage.timeSensitiveSection.fixPolicyConnection.defaultSubtitle');
 
     const isHRConnection = (CONST.POLICY.CONNECTIONS.HR_CONNECTION_NAMES as readonly PolicyConnectionName[]).includes(connectionName);
-    const fixTab = isHRConnection ? CONST.TAB.CONNECTIONS.PEOPLE : CONST.TAB.CONNECTIONS.ACCOUNTING;
+    const isRecruitingConnection = (CONST.POLICY.CONNECTIONS.RECRUITING_CONNECTION_NAMES as readonly PolicyConnectionName[]).includes(connectionName);
+    const fixTab = isHRConnection ? CONST.TAB.CONNECTIONS.PEOPLE : isRecruitingConnection ? CONST.TAB.CONNECTIONS.RECRUITING : CONST.TAB.CONNECTIONS.ACCOUNTING;
     const fixRoute = ROUTES.WORKSPACE_CONNECTIONS.getRoute(policyID, undefined, undefined, undefined, undefined, fixTab);
 
     return (
