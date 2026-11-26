@@ -1,3 +1,5 @@
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
+
 import {
     buildExpenseDefaultRule,
     canEditExpenseDefaultRule,
@@ -175,6 +177,21 @@ describe('ExpenseDefaultRuleUtils', () => {
             const rule = buildExpenseDefaultRule({merchantToMatch: 'Starbucks', comment: 'A description'}, policy);
 
             expect(getExpenseDefaultFormValues(rule)?.comment).toBe('A description');
+        });
+
+        it('round trips a description containing markdown formatting', () => {
+            const richMarkdownComment = '*bold* _italic_ ~strikethrough~ `code`';
+            const rule = buildExpenseDefaultRule({merchantToMatch: 'Starbucks', comment: richMarkdownComment}, policy);
+
+            expect(getExpenseDefaultFormValues(rule)?.comment).toBe(richMarkdownComment);
+        });
+
+        it('handles plain text descriptions without errors when HTML tags are absent', () => {
+            const strippedRule = buildRuleWithOverrides({
+                actions: toIndexMap([{name: ACTION.SET, field: FIELD.COMMENT, value: 'bold italic'}]),
+            });
+
+            expect(getExpenseDefaultFormValues(strippedRule)?.comment).toBe('bold italic');
         });
 
         it('accepts a single-value list on the right of the merchant filter', () => {
