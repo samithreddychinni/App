@@ -10889,6 +10889,12 @@ ${reportName}`,
             }
             return `ενημέρωσε την ημερομηνία υποβολής της μηνιαίας αναφοράς σε «${newValue}» (προηγουμένως «${oldValue}»)`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue: string, newValue: string) => {
+            if (!oldValue) {
+                return `ορίστε τη δεύτερη ημερομηνία υποβολής της αναφοράς δύο φορές τον μήνα σε «${newValue}»`;
+            }
+            return `ενημέρωσε τη δεύτερη ημερομηνία υποβολής της αναφοράς δύο φορές τον μήνα σε «${newValue}» (προηγουμένως «${oldValue}»)`;
+        },
         updateDefaultBillable: (oldValue: string, newValue: string) => `ενημέρωσε το «Επανεπιβάρυνση δαπανών σε πελάτες» σε «${newValue}» (προηγουμένως «${oldValue}»)`,
         updateDefaultReimbursable: (oldValue: string, newValue: string) => `ενημερώθηκε η «Προεπιλογή δαπανών με μετρητά» σε «${newValue}» (προηγουμένως «${oldValue}»)`,
         updateDefaultTitleEnforced: (value: boolean) => `ενεργοποίησε την «επιβολή προεπιλεγμένων τίτλων αναφοράς» ${value ? 'ενεργό' : 'κλειστό'}`,

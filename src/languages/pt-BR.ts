@@ -10542,6 +10542,12 @@ Adicione mais regras de gasto para proteger o fluxo de caixa da empresa.`,
             }
             return `atualizou a data de envio do relatório mensal para "${newValue}" (anteriormente "${oldValue}")`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue: string, newValue: string) => {
+            if (!oldValue) {
+                return `definir a segunda data de envio do relatório quinzenal para "${newValue}"`;
+            }
+            return `atualizou a segunda data de envio do relatório quinzenal para "${newValue}" (anteriormente "${oldValue}")`;
+        },
         updateDefaultBillable: (oldValue: string, newValue: string) => `atualizou "Refaturar despesas para clientes" para "${newValue}" (antes "${oldValue}")`,
         updateDefaultReimbursable: (oldValue: string, newValue: string) => `atualizou "Padrão de despesa em dinheiro" para "${newValue}" (anteriormente "${oldValue}")`,
         updateDefaultTitleEnforced: (value: boolean) => `ativou “Aplicar títulos padrão de relatório” ${value ? 'ativado' : 'desligado'}`,

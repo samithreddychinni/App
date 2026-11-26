@@ -10601,6 +10601,12 @@ ${reportName}`,
             }
             return `actualizar la fecha de envío del informe mensual a "${newValue}" (previamente "${oldValue}")`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue, newValue) => {
+            if (!oldValue) {
+                return `establecer la segunda fecha de envío del informe bimensual a "${newValue}"`;
+            }
+            return `actualizar la segunda fecha de envío del informe bimensual a "${newValue}" (previamente "${oldValue}")`;
+        },
         updateDefaultTitleEnforced: (value) => `cambió "Requerir título predeterminado de informe" a ${value ? 'activado' : 'desactivado'}`,
         changedCustomReportNameFormula: (oldValue, newValue) => `cambió la fórmula personalizado del nombre del informe a "${newValue}" (anteriormente "${oldValue}")`,
         updateWorkspaceDescription: (newDescription, oldDescription) =>

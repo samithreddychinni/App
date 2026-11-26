@@ -10384,6 +10384,12 @@ ${reportName}`,
             }
             return `月次レポートの提出日を「${newValue}」（以前は「${oldValue}」）に更新しました`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue: string, newValue: string) => {
+            if (!oldValue) {
+                return `月2回レポートの2回目の提出日を「${newValue}」に設定`;
+            }
+            return `月2回レポートの2回目の提出日を「${newValue}」（以前は「${oldValue}」）に更新しました`;
+        },
         updateDefaultBillable: (oldValue: string, newValue: string) => `「クライアントへの経費再請求」を「${newValue}」に更新しました（以前は「${oldValue}」）`,
         updateDefaultReimbursable: (oldValue: string, newValue: string) => `「現金経費のデフォルト」を「${newValue}」（以前は「${oldValue}」）に更新しました`,
         updateDefaultTitleEnforced: (value: boolean) => `「デフォルトのレポートタイトルを適用」を有効にしました ${value ? 'オン' : 'オフ'}`,

@@ -5653,6 +5653,7 @@ const CONST = {
             AUTOREPORTING: 'autoReporting',
             AUTOREPORTING_FREQUENCY: 'autoReportingFrequency',
             AUTOREPORTING_OFFSET: 'autoReportingOffset',
+            AUTOREPORTING_OFFSET_SECOND_SEMI_MONTHLY: 'autoReportingOffsetSecondSemiMonthly',
             GLOBAL_REIMBURSEMENT_FX_PREFER_COMPANY: 'globalReimbursementFXPreferCompany',
             IS_COLLECT_DEPOSIT_ACCOUNTS_ENABLED: 'isCollectDepositAccountsEnabled',
             REIMBURSEMENT_COUNTRIES: 'reimbursementCountries',

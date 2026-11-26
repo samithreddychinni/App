@@ -29,6 +29,29 @@ import type {Reservation} from '../../src/types/onyx/Transaction';
 import {actionR14932 as mockIOUAction, originalMessageR14932 as mockOriginalMessage} from '../../__mocks__/reportData/actions';
 import {chatReportR14932 as mockChatReport, iouReportR14932 as mockIOUReport} from '../../__mocks__/reportData/reports';
 import CONST from '../../src/CONST';
+
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: jest.fn(() => false),
+    },
+}));
+
+jest.mock('@expensify/nitro-utils', () => ({
+    VERTICAL_BAR_EDGE: {UNSPECIFIED: 'unspecified', LEADING: 'leading', TRAILING: 'trailing'},
+    VerticalBarNitroModule: {
+        edge: 'unspecified',
+        addEdgeListener: () => () => {},
+    },
+}));
+
+jest.mock(
+    'expo-glass-effect',
+    () => ({
+        isLiquidGlassAvailable: () => false,
+    }),
+    {virtual: true},
+);
 import * as ReportActionsUtils from '../../src/libs/ReportActionsUtils';
 import {
     getAddedCardFeedMessage,
@@ -5942,9 +5965,9 @@ describe('ReportActionsUtils', () => {
             });
         });
 
-        it('should use set wording when the previous monthly offset is empty', () => {
+        it('should use set wording when the previous monthly offset is empty or undefined', () => {
             // Given a workspace without a previous monthly date
-            const action = {
+            const actionWithEmptyString = {
                 actionName: CONST.REPORT.ACTIONS.TYPE.POLICY_CHANGE_LOG.UPDATE_FIELD,
                 reportActionID: '1',
                 created: '',
@@ -5955,11 +5978,64 @@ describe('ReportActionsUtils', () => {
                 },
             } as ReportAction;
 
+            const actionWithUndefined = {
+                actionName: CONST.REPORT.ACTIONS.TYPE.POLICY_CHANGE_LOG.UPDATE_FIELD,
+                reportActionID: '2',
+                created: '',
+                originalMessage: {
+                    updatedField: CONST.POLICY.COLLECTION_KEYS.AUTOREPORTING_OFFSET,
+                    newValue: 15,
+                },
+            } as ReportAction;
+
+            // When building the admin log message
+            const resultWithEmptyString = getWorkspaceUpdateFieldMessage(translateLocal, actionWithEmptyString);
+            const resultWithUndefined = getWorkspaceUpdateFieldMessage(translateLocal, actionWithUndefined);
+
+            // Then the new date is translated without inventing a previous date
+            expect(resultWithEmptyString).toBe('set the monthly report submission date to "Last Friday"');
+            expect(resultWithUndefined).toBe('set the monthly report submission date to "15th"');
+        });
+
+        it('should display the second semi-monthly date update instead of the server message', () => {
+            // Given a change to the second semi-monthly date
+            const action = {
+                actionName: CONST.REPORT.ACTIONS.TYPE.POLICY_CHANGE_LOG.UPDATE_FIELD,
+                reportActionID: '1',
+                created: '',
+                message: [{type: 'COMMENT', text: 'updated the second semi-monthly report submission date from "the last day of the month" to "12th"'}],
+                originalMessage: {
+                    updatedField: CONST.POLICY.COLLECTION_KEYS.AUTOREPORTING_OFFSET_SECOND_SEMI_MONTHLY,
+                    oldValue: CONST.POLICY.AUTO_REPORTING_OFFSET.LAST_DAY_OF_MONTH,
+                    newValue: 12,
+                },
+            } as ReportAction;
+
             // When building the admin log message
             const result = getWorkspaceUpdateFieldMessage(translateLocal, action);
 
-            // Then the new date is translated without inventing a previous date
-            expect(result).toBe('set the monthly report submission date to "Last Friday"');
+            // Then App wording is used and both dates are formatted
+            expect(result).toBe('updated the second semi-monthly report submission date to "12th" (previously "Last day of the month")');
+        });
+
+        it('should use set wording when the previous second semi-monthly offset is empty or undefined', () => {
+            // Given a newly configured second semi-monthly date
+            const action = {
+                actionName: CONST.REPORT.ACTIONS.TYPE.POLICY_CHANGE_LOG.UPDATE_FIELD,
+                reportActionID: '1',
+                created: '',
+                message: [{type: 'COMMENT', text: 'set autoReportingOffsetSecondSemiMonthly to "lastDayOfMonth"'}],
+                originalMessage: {
+                    updatedField: CONST.POLICY.COLLECTION_KEYS.AUTOREPORTING_OFFSET_SECOND_SEMI_MONTHLY,
+                    newValue: CONST.POLICY.AUTO_REPORTING_OFFSET.LAST_DAY_OF_MONTH,
+                },
+            } as ReportAction;
+
+            // When building the admin log message
+            const result = getWorkspaceUpdateFieldMessage(translateLocal, action);
+
+            // Then App set wording is used instead of server fallback
+            expect(result).toBe('set the second semi-monthly report submission date to "Last day of the month"');
         });
 
         it('should return the App message when the workspace timezone changes', () => {

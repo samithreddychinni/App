@@ -10550,6 +10550,12 @@ Aggiungi altre regole di spesa per proteggere il flusso di cassa aziendale.`,
             }
             return `ha aggiornato la data di invio del report mensile a "${newValue}" (in precedenza "${oldValue}")`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue: string, newValue: string) => {
+            if (!oldValue) {
+                return `imposta la seconda data di invio del report due volte al mese su "${newValue}"`;
+            }
+            return `ha aggiornato la seconda data di invio del report due volte al mese a "${newValue}" (in precedenza "${oldValue}")`;
+        },
         updateDefaultBillable: (oldValue: string, newValue: string) => `aggiornato "Ribillare le spese ai clienti" a "${newValue}" (precedentemente "${oldValue}")`,
         updateDefaultReimbursable: (oldValue: string, newValue: string) => `aggiornato "Impostazione predefinita spese in contanti" a "${newValue}" (in precedenza "${oldValue}")`,
         updateDefaultTitleEnforced: (value: boolean) => `ha attivato "Applica i titoli predefiniti dei report" ${value ? 'attivo' : 'disattivato'}`,

@@ -10638,6 +10638,12 @@ Ajoutez davantage de règles de dépenses pour protéger la trésorerie de l’e
             }
             return `a mis à jour la date de soumission mensuelle de la note de frais sur « ${newValue} » (auparavant « ${oldValue} »)`;
         },
+        updateSecondSemiMonthlyOffset: (oldValue: string, newValue: string) => {
+            if (!oldValue) {
+                return `définir la deuxième date de soumission bimensuelle des notes de frais sur « ${newValue} »`;
+            }
+            return `a mis à jour la deuxième date de soumission bimensuelle des notes de frais sur « ${newValue} » (auparavant « ${oldValue} »)`;
+        },
         updateDefaultBillable: (oldValue: string, newValue: string) => `a mis à jour « Refacturer les dépenses aux clients » sur « ${newValue} » (auparavant « ${oldValue} »)`,
         updateDefaultReimbursable: (oldValue: string, newValue: string) => `mis à jour « Dépense en espèces par défaut » en « ${newValue} » (précédemment « ${oldValue} »)`,
         updateDefaultTitleEnforced: (value: boolean) => `a activé « Appliquer les titres de note de frais par défaut » ${value ? 'activé' : 'désactivé'}`,
