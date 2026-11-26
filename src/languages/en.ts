@@ -9339,6 +9339,9 @@ const translations = {
             },
         },
         merge: {
+            manageConnection: 'Manage connection',
+            manageConnectionTitle: (providerName: string) => `Manage ${providerName} connection`,
+            manageConnectionPrompt: (providerName: string) => `You'll sign in to ${providerName} again. Your settings stay the same.`,
             syncNow: 'Sync now',
             disconnect: 'Disconnect',
             disconnectTitle: (providerName: string) => `Disconnect ${providerName}`,

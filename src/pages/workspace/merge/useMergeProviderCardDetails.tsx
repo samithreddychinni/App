@@ -9,7 +9,7 @@ import useNetwork from '@hooks/useNetwork';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {removePolicyConnection, syncConnection} from '@libs/actions/connections';
-import {showMergeManualSyncLimitModalIfReached} from '@libs/merge/MergeUtils';
+import {isMergeConnectionName, showMergeManualSyncLimitModalIfReached} from '@libs/merge/MergeUtils';
 import Navigation from '@libs/Navigation/Navigation';
 
 import CONST from '@src/CONST';
@@ -37,7 +37,7 @@ function useMergeProviderCardDetails({card, policy, handleConnect, canWriteMoreF
     const {translate, datetimeToRelative} = useLocalize();
     const styles = useThemeStyles();
     const {isOffline} = useNetwork();
-    const icons = useMemoizedLazyExpensifyIcons(['Sync', 'Trashcan', 'Building', 'CheckCircle']);
+    const icons = useMemoizedLazyExpensifyIcons(['Sync', 'Trashcan', 'Building', 'CheckCircle', 'Key']);
     const {showConfirmModal} = useConfirmModal();
 
     const fallbackIcon = icons.Building;
@@ -137,8 +137,31 @@ function useMergeProviderCardDetails({card, policy, handleConnect, canWriteMoreF
         };
     };
 
+    const shouldShowManageConnection = isMergeConnectionName(card.connectionName) && !card.needsReconnect;
+    const manageConnectionItem: ThreeDotsMenuProps['menuItems'][number] = {
+        icon: icons.Key,
+        text: translate('workspace.merge.manageConnection'),
+        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.MERGE_MENU_MANAGE_CONNECTION,
+        disabled: isOffline,
+        shouldCallAfterModalHide: true,
+        onSelected: () => {
+            showConfirmModal({
+                title: translate('workspace.merge.manageConnectionTitle', card.displayName),
+                prompt: translate('workspace.merge.manageConnectionPrompt', card.displayName),
+                confirmText: translate('common.continue'),
+                cancelText: translate('common.cancel'),
+            }).then((result) => {
+                if (result?.action !== ModalActions.CONFIRM) {
+                    return;
+                }
+                handleConnect();
+            });
+        },
+    };
+
     const overflowMenu: ThreeDotsMenuProps['menuItems'] = [
         getPrimaryMenuItem(),
+        ...(shouldShowManageConnection ? [manageConnectionItem] : []),
         {
             icon: icons.Trashcan,
             text: translate('workspace.merge.disconnect'),
