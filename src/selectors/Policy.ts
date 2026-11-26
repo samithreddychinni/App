@@ -4,6 +4,7 @@ import {hasSynchronizationErrorMessage, isConnectionInProgress, isConnectionUnve
 import {getDisplayNameForWorkspace} from '@libs/actions/Policy/Policy';
 import isTeachersUnitePolicyID from '@libs/isTeachersUnitePolicyID';
 import {getConnectedHRProvider} from '@libs/merge/HRUtils';
+import {isMergeConnectionName, isMergeSyncing} from '@libs/merge/MergeUtils';
 import type {PolicyPaymentAttribution} from '@libs/PolicyPaymentUtils';
 import {
     canCreateExpensesOnPolicy,
@@ -246,7 +247,10 @@ const createTimeSensitiveAdminPoliciesSelector =
             const isSyncInProgress = isConnectionInProgress(syncProgress, policy);
 
             for (const [connectionName] of ObjectUtils.typedEntries(policyConnections)) {
-                if (!hasSynchronizationErrorMessage(policy, connectionName, isSyncInProgress)) {
+                const isThisConnectionSyncing = isMergeConnectionName(connectionName)
+                    ? isMergeSyncing(policy, connectionName)
+                    : isSyncInProgress && syncProgress?.connectionName === connectionName;
+                if (!hasSynchronizationErrorMessage(policy, connectionName, isThisConnectionSyncing)) {
                     continue;
                 }
                 const integrationName =
