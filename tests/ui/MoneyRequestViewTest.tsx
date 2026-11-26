@@ -26,6 +26,27 @@ import * as LHNTestUtils from '../utils/LHNTestUtils';
 import * as TestHelper from '../utils/TestHelper';
 import waitForBatchedUpdatesWithAct from '../utils/waitForBatchedUpdatesWithAct';
 
+jest.mock(
+    'expo-glass-effect',
+    () => ({
+        isLiquidGlassAvailable: jest.fn(() => false),
+        GlassView: 'GlassView',
+    }),
+    {virtual: true},
+);
+
+jest.mock(
+    '@expensify/nitro-utils',
+    () => ({
+        VERTICAL_BAR_EDGE: {UNSPECIFIED: 'unspecified', LEADING: 'leading', TRAILING: 'trailing'},
+        VerticalBarNitroModule: {
+            edge: 'unspecified',
+            addEdgeListener: () => () => {},
+        },
+    }),
+    {virtual: true},
+);
+
 // The component renders outside a NavigationContainer here, so the screen-bound hook cannot read focus.
 jest.mock('@hooks/useScreenBoundDynamicRoute', () => () => (suffix: string) => suffix);
 
@@ -502,6 +523,60 @@ describe('MoneyRequestView edit fields', () => {
         });
         expect(screen.queryByLabelText(fieldLabel('common.category'))).not.toBeOnTheScreen();
         expect(screen.queryByTestId('menu-item-Location')).not.toBeOnTheScreen();
+    });
+
+    it('shows the Category row for an expense report when its workspace policy was deleted', async () => {
+        // Given an expense on an expense report with a category set, whose workspace policy is deleted from Onyx.
+        const threadReport = {...LHNTestUtils.getFakeReport(), parentReportID: expenseReportID, parentReportActionID};
+        await setupTestData();
+        await act(async () => {
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}`, {category: 'Advertising'});
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, null);
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES}${policyID}`, null);
+        });
+
+        // When the expense thread is opened.
+        renderMoneyRequestView(threadReport);
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the Category row is displayed with the transaction category in read-only mode.
+        expect(screen.getByLabelText('common.category, Advertising')).toBeOnTheScreen();
+    });
+
+    it('does not show the Category row for an expense report with no category when workspace policy was deleted', async () => {
+        // Given an expense with no category set, whose workspace policy is deleted from Onyx.
+        const threadReport = {...LHNTestUtils.getFakeReport(), parentReportID: expenseReportID, parentReportActionID};
+        await setupTestData();
+        await act(async () => {
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}`, {category: ''});
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, null);
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY_CATEGORIES}${policyID}`, null);
+        });
+
+        // When the expense thread is opened.
+        renderMoneyRequestView(threadReport);
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the Category row is omitted.
+        expect(screen.queryByLabelText(fieldLabel('common.category'))).not.toBeOnTheScreen();
+    });
+
+    it('does not show the Category row for a personal IOU when policy is missing', async () => {
+        // Given a personal 1:1 IOU request.
+        const threadReport = {...LHNTestUtils.getFakeReport(), parentReportID: expenseReportID, parentReportActionID};
+        await setupTestData();
+        await act(async () => {
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${expenseReportID}`, {type: CONST.REPORT.TYPE.IOU});
+            await Onyx.merge(`${ONYXKEYS.COLLECTION.TRANSACTION}${transactionID}`, {category: 'Advertising'});
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, null);
+        });
+
+        // When the personal expense is opened.
+        renderMoneyRequestView(threadReport);
+        await waitForBatchedUpdatesWithAct();
+
+        // Then the Category row is omitted because personal IOUs never show categories.
+        expect(screen.queryByLabelText(fieldLabel('common.category'))).not.toBeOnTheScreen();
     });
 
     const renderOtherUsersUnreportedExpenseWithTag = async (transactionOverrides: Partial<Transaction> = {}) => {
