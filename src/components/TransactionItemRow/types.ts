@@ -121,6 +121,7 @@ type TransactionItemRowProps = CheckboxSentryLabelProps & {
     radioButtonContainerStyle?: StyleProp<ViewStyle>;
     radioButtonWrapperStyle?: StyleProp<ViewStyle>;
     shouldShowErrors?: boolean;
+    excludedErrorMessages?: string[];
     shouldShowCategoryOnNarrowLayout?: boolean;
     shouldHighlightItemWhenSelected?: boolean;
     isDisabled?: boolean;

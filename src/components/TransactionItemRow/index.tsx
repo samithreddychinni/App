@@ -98,6 +98,7 @@ function TransactionItemRow({
     canEditAmount,
     canEditTag,
     shouldSkipDeferRBR = false,
+    excludedErrorMessages,
 }: TransactionItemRowProps) {
     const shouldDeferRBR = !shouldSkipDeferRBR;
     const [isTrackIntentUser] = useOnyx(ONYXKEYS.NVP_INTRO_SELECTED, {selector: isTrackIntentUserSelector});
@@ -173,6 +174,7 @@ function TransactionItemRow({
             shouldShowBottomBorder,
             onArrowRightPress,
             shouldShowArrowRightOnNarrowLayout,
+            excludedErrorMessages,
         };
 
         return (
@@ -249,6 +251,7 @@ function TransactionItemRow({
         canEditCategory,
         canEditAmount,
         canEditTag,
+        excludedErrorMessages,
     };
 
     const description = getDescription(transactionItem);

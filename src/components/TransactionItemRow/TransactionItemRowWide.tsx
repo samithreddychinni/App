@@ -156,6 +156,7 @@ function TransactionItemRowWide({
     transactionThreadReportID,
     createdAt,
     shouldShowMarkAsDoneCopy,
+    excludedErrorMessages,
 }: TransactionItemRowWideProps) {
     const styles = useThemeStyles();
     const {translate} = useLocalize();
@@ -833,6 +834,7 @@ function TransactionItemRowWide({
                         missingFieldError={missingFieldError}
                         transactionThreadReportID={transactionThreadReportID}
                         containerStyles={shouldUseFullHeightEditableCellHoverTarget ? [styles.pb2] : undefined}
+                        excludedErrorMessages={excludedErrorMessages}
                     />
                 )}
             </View>

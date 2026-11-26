@@ -44,6 +44,9 @@ type TransactionItemRowRBRInnerProps = {
 
     /** Whether to use the narrow (mobile) layout */
     shouldUseNarrowLayout?: boolean;
+
+    /** Error messages already displayed in the row container to avoid duplicate display in RBR */
+    excludedErrorMessages?: string[];
 };
 
 type TransactionItemRowRBRProps = TransactionItemRowRBRInnerProps & {
@@ -51,7 +54,7 @@ type TransactionItemRowRBRProps = TransactionItemRowRBRInnerProps & {
     transactionThreadReportID?: string;
 };
 
-function TransactionItemRowRBRInner({transaction, violations, report, containerStyles, missingFieldError, shouldUseNarrowLayout}: TransactionItemRowRBRInnerProps) {
+function TransactionItemRowRBRInner({transaction, violations, report, containerStyles, missingFieldError, shouldUseNarrowLayout, excludedErrorMessages}: TransactionItemRowRBRInnerProps) {
     const styles = useThemeStyles();
     const {translate, dateFnsLocale} = useLocalize();
     const {convertToDisplayString} = useCurrencyListActions();
@@ -87,6 +90,7 @@ function TransactionItemRowRBRInner({transaction, violations, report, containerS
         isMarkAsCash: isMarkAsCash || undefined,
         canEdit,
         policyVendors,
+        excludedErrorMessages,
     });
     const hasHTMLTags = CONST.HTML_TAG_REGEX.test(RBRMessages);
 
@@ -121,7 +125,7 @@ function TransactionItemRowRBRInner({transaction, violations, report, containerS
     );
 }
 
-function TransactionItemRowRBR({transaction, violations, report, containerStyles, missingFieldError, transactionThreadReportID, shouldUseNarrowLayout}: TransactionItemRowRBRProps) {
+function TransactionItemRowRBR({transaction, violations, report, containerStyles, missingFieldError, transactionThreadReportID, shouldUseNarrowLayout, excludedErrorMessages}: TransactionItemRowRBRProps) {
     const [transactionThreadActions] = useOnyx(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${transactionThreadReportID}`);
 
     const hasThreadErrors = transactionThreadActions ? Object.values(transactionThreadActions).some((action) => !isEmptyObject(action.errors)) : false;
@@ -140,6 +144,7 @@ function TransactionItemRowRBR({transaction, violations, report, containerStyles
             containerStyles={containerStyles}
             missingFieldError={missingFieldError}
             shouldUseNarrowLayout={shouldUseNarrowLayout}
+            excludedErrorMessages={excludedErrorMessages}
         />
     );
 }

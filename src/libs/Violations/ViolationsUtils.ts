@@ -506,8 +506,9 @@ function buildRuleViolationMessage(
 /**
  * Extracts unique error messages from errors and actions
  */
-function extractErrorMessages(errors: Errors | ReceiptErrors, errorActions: ReportAction[], translate: LocaleContextProps['translate']): string[] {
+function extractErrorMessages(errors: Errors | ReceiptErrors, errorActions: ReportAction[], translate: LocaleContextProps['translate'], excludedErrorMessages?: string[]): string[] {
     const uniqueMessages = new Set<string>();
+    const excludedSet = new Set(excludedErrorMessages?.map((message) => message.trim()).filter(Boolean));
 
     // Combine transaction and action errors
     let allErrors: Record<string, string | Errors | ReceiptError | null | undefined> = {...errors};
@@ -524,17 +525,24 @@ function extractErrorMessages(errors: Errors | ReceiptErrors, errorActions: Repo
             continue;
         }
         if (typeof errorValue === 'string') {
-            uniqueMessages.add(errorValue);
+            if (!excludedSet.has(errorValue.trim())) {
+                uniqueMessages.add(errorValue);
+            }
         } else if (isReceiptError(errorValue)) {
             // Use the server rejection message attached by reconcileFailureDataWithServerErrors when present
             // so it deduplicates with transaction.errors, while keeping the generic copy for ordinary upload failures.
-            uniqueMessages.add(errorValue.message?.trim() ? errorValue.message : translate('iou.error.receiptFailureMessageShort'));
+            const message = errorValue.message?.trim() ? errorValue.message : translate('iou.error.receiptFailureMessageShort');
+            if (!excludedSet.has(message.trim())) {
+                uniqueMessages.add(message);
+            }
         } else {
             for (const nestedErrorValue of Object.values(errorValue)) {
                 if (!nestedErrorValue) {
                     continue;
                 }
-                uniqueMessages.add(nestedErrorValue);
+                if (!excludedSet.has(nestedErrorValue.trim())) {
+                    uniqueMessages.add(nestedErrorValue);
+                }
             }
         }
     }
@@ -1409,6 +1417,7 @@ const ViolationsUtils = {
         isMarkAsCash,
         canEdit = true,
         policyVendors,
+        excludedErrorMessages,
     }: {
         transaction: Transaction;
         transactionViolations: TransactionViolation[];
@@ -1424,8 +1433,9 @@ const ViolationsUtils = {
         isMarkAsCash?: boolean;
         canEdit?: boolean;
         policyVendors?: PolicyVendors;
+        excludedErrorMessages?: string[];
     }): string {
-        const errorMessages = extractErrorMessages(transaction?.errors ?? {}, transactionThreadActions?.filter((e) => !!e.errors) ?? [], translate);
+        const errorMessages = extractErrorMessages(transaction?.errors ?? {}, transactionThreadActions?.filter((e) => !!e.errors) ?? [], translate, excludedErrorMessages);
         const filteredViolations = filterReceiptViolations(transactionViolations);
 
         return [

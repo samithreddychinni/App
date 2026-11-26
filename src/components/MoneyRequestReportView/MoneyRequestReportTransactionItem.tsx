@@ -19,7 +19,7 @@ import useTransactionInlineEdit from '@hooks/useTransactionInlineEdit';
 import {getCardDescription} from '@libs/CardUtils';
 import ControlSelection from '@libs/ControlSelection';
 import canUseTouchScreen from '@libs/DeviceCapabilities/canUseTouchScreen';
-import {getLatestErrorMessageField} from '@libs/ErrorUtils';
+import {getLatestErrorMessageField, isTranslationKeyError} from '@libs/ErrorUtils';
 import {
     EMPTY_CARDS,
     getReportRowCards,
@@ -192,6 +192,17 @@ function MoneyRequestReportTransactionItemBody({
     // A reject error is terminal for this row, so it replaces any other message rather than stacking with it.
     const transactionErrors: Errors | TranslationKeyErrors = rejectErrorKey ? rejectError : getLatestErrorMessageField({errors: messageErrors});
     const hasTransactionErrors = Object.keys(transactionErrors).length > 0;
+    const displayedErrorMessages = Object.values(transactionErrors)
+        .map((error) => {
+            if (typeof error === 'string') {
+                return error;
+            }
+            if (isTranslationKeyError(error)) {
+                return translate(error.translationKey);
+            }
+            return '';
+        })
+        .filter(Boolean);
 
     // The last row keeps its bottom border but hides it, so the row height stays the same when a row is added below it.
     // FlashList ignores size changes of 1px or less, so a border that appears later would be covered by the next row.
@@ -350,6 +361,7 @@ function MoneyRequestReportTransactionItemBody({
                             onEditTag={inlineEdit?.onEditTag}
                             shouldSkipDeferRBR={shouldSkipDeferRBR}
                             transactionThreadReportID={transactionThreadReportID}
+                            excludedErrorMessages={displayedErrorMessages}
                         />
                         <ErrorMessageRow
                             errors={transactionErrors}

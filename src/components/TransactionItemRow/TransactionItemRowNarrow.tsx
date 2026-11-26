@@ -53,6 +53,7 @@ type TransactionItemRowNarrowProps = DistributedPick<
     | 'onArrowRightPress'
     | 'shouldShowArrowRightOnNarrowLayout'
     | 'checkboxSentryLabel'
+    | 'excludedErrorMessages'
 > &
     TransactionItemRowNarrowComputedData &
     TransactionItemRowRBRDeferControlProps;
@@ -89,6 +90,7 @@ function TransactionItemRowNarrow({
     categoryForDisplay,
     createdAt,
     shouldRenderChatBubbleCell,
+    excludedErrorMessages,
 }: TransactionItemRowNarrowProps) {
     const styles = useThemeStyles();
     const theme = useTheme();
@@ -203,6 +205,7 @@ function TransactionItemRowNarrow({
                         missingFieldError={missingFieldError}
                         transactionThreadReportID={transactionThreadReportID}
                         shouldUseNarrowLayout
+                        excludedErrorMessages={excludedErrorMessages}
                     />
                 )}
             </View>

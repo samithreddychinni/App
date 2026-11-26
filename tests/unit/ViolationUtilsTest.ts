@@ -5148,6 +5148,40 @@ describe('getRBRMessages', () => {
         // Then both the receipt failure message and the failed thread comment message are returned.
         expect(result).toBe(`${translateLocal('iou.error.receiptFailureMessageShort')} ${commentError}`);
     });
+
+    it('should exclude error messages specified in excludedErrorMessages', () => {
+        // Given a transaction with server error strings and violations.
+        const serverReason = 'New expenses cannot be added to this report.';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Onyx.merge combines server string errors and client ReceiptError entries on the same errors map at runtime.
+        const mixedErrors = {
+            receiptError: {
+                error: CONST.IOU.RECEIPT_ERROR,
+                source: 'file:///receipt.jpg',
+                filename: 'receipt.jpg',
+                message: serverReason,
+            },
+            serverError: serverReason,
+        } as unknown as Transaction['errors'];
+        const transactionWithErrors: Transaction = {
+            ...mockTransaction,
+            errors: mixedErrors,
+        };
+
+        // When building the RBR message with excludedErrorMessages containing the server error.
+        const result = ViolationsUtils.getRBRMessages({
+            dateFnsLocale: undefined,
+            transaction: transactionWithErrors,
+            transactionViolations: mockViolations,
+            translate: translateLocal,
+            convertToDisplayString,
+            transactionThreadActions: [],
+            excludedErrorMessages: [serverReason],
+        });
+
+        // Then the excluded server error is omitted and only violations are returned.
+        const expectedResult = `${translateLocal('violations.missingCategory')}. ${translateLocal('violations.missingTag')}.`;
+        expect(result).toBe(expectedResult);
+    });
 });
 
 describe('hasVisibleViolationsForUser', () => {
