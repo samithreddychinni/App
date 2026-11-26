@@ -5646,6 +5646,8 @@ ${integrationName === CONST.ONBOARDING_ACCOUNTING_MAPPING.other ? 'あなたの'
                 [CONST.TAB.CONNECTIONS.RECEIPTS]: '領収書',
                 [CONST.TAB.CONNECTIONS.AI]: 'AI と MCP',
             },
+            activeConnections: 'アクティブな接続',
+            otherConnections: 'その他の接続',
             findConnections: '連携先を見つける',
             configure: '設定',
             fix: '修正',
@@ -5727,6 +5729,7 @@ ${integrationName === CONST.ONBOARDING_ACCOUNTING_MAPPING.other ? 'あなたの'
             missingPerDiemUnit: 'このワークスペースでは日当が正しく設定されていません。ヘルプが必要な場合は Concierge までお問い合わせください。',
         },
         qbd: {
+            companyFile: '会社ファイル',
             exportOutOfPocketExpensesDescription: '自己負担経費を QuickBooks Desktop にエクスポートする方法を設定します。',
             exportOutOfPocketExpensesCheckToggle: '小切手を「後で印刷」にマーク',
             exportDescription: 'Expensify のデータを QuickBooks Desktop へエクスポートする方法を設定します。',
@@ -6130,6 +6133,7 @@ ${integrationName === CONST.ONBOARDING_ACCOUNTING_MAPPING.other ? 'あなたの'
             fxExpenseAccountDescription: '海外で行った支払いについて、御社が為替換算コストを負担する場合、そのコストは仕訳として Sage Intacct のこの勘定科目に計上します。',
         },
         certinia: {
+            salesforceInstanceUrl: 'SalesforceインスタンスURL',
             title: 'Certinia',
             titleFFA: 'Certinia (FFA)',
             titlePSA: 'Certinia (PSA)',
@@ -6224,6 +6228,7 @@ ${integrationName === CONST.ONBOARDING_ACCOUNTING_MAPPING.other ? 'あなたの'
             noExpenseAccountsFoundDescription: 'Certinia で総勘定元帳勘定科目を追加した後に、接続を再同期してください。',
         },
         netsuite: {
+            accountID: 'アカウントID',
             subsidiary: '子会社',
             subsidiarySelectDescription: 'データをインポートしたいNetSuiteの子会社を選択してください。',
             exportDescription: 'Expensify データを NetSuite へエクスポートする方法を設定します。',

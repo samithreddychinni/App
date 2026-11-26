@@ -65,6 +65,10 @@ type UseConnectedAccountingIntegrationOptions = {
     onDisconnectConfirmed?: (disconnect: () => void) => void;
 };
 
+type IntegrationMenuItem = MenuItemData & {
+    shouldKeepOnAuthError?: boolean;
+};
+
 /**
  * Everything the Connections accounting panel derives for the workspace's connected accounting integration: its status,
  * the overflow menu, and the settings rows.
@@ -266,7 +270,7 @@ function useConnectedAccountingIntegration(policy: OnyxEntry<Policy>, {onDisconn
         openPolicyExpensifyCardsPage(policyID, workspaceAccountID);
     }, [policyID, policy?.areExpensifyCardsEnabled, workspaceAccountID]);
 
-    const getIntegrationSpecificMenuItems = () => {
+    const getIntegrationSpecificMenuItems = (): IntegrationMenuItem[] => {
         const sageIntacctEntityList = policy?.connections?.intacct?.data?.entities ?? [];
         const netSuiteSubsidiaryList = policy?.connections?.netsuite?.options?.data?.subsidiaryList ?? [];
         const rilletSubsidiaryList = policy?.connections?.rillet?.data?.subsidiaries;
@@ -284,211 +288,326 @@ function useConnectedAccountingIntegration(policy: OnyxEntry<Policy>, {onDisconn
         switch (connectedIntegration) {
             case CONST.POLICY.CONNECTIONS.NAME.XERO:
                 return !policy?.connections?.xero?.data?.tenants
-                    ? {}
-                    : {
-                          description: translate('workspace.xero.organization'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.XERO,
-                          iconRight: icons.ArrowRight,
-                          title: getCurrentXeroOrganizationName(policy),
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && tenants.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          onPress:
-                              canWriteAccounting && tenants.length > 1
-                                  ? () => {
-                                        Navigation.navigate(ROUTES.POLICY_ACCOUNTING_XERO_ORGANIZATION.getRoute(policyID, currentXeroOrganization?.id));
-                                    }
-                                  : undefined,
-                          pendingAction: settingsPendingAction([CONST.XERO_CONFIG.TENANT_ID], policy?.connections?.xero?.config?.pendingFields),
-                          brickRoadIndicator: areSettingsInErrorFields([CONST.XERO_CONFIG.TENANT_ID], policy?.connections?.xero?.config?.errorFields)
-                              ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR
-                              : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.NETSUITE:
-                return !policy?.connections?.netsuite?.options?.config?.subsidiary
-                    ? {}
-                    : {
-                          description: translate('workspace.netsuite.subsidiary'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.NETSUITE,
-                          iconRight: icons.ArrowRight,
-                          title: policy?.connections?.netsuite?.options?.config?.subsidiary ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && netSuiteSubsidiaryList?.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.netsuite?.options?.config?.pendingFields?.subsidiary,
-                          brickRoadIndicator: policy?.connections?.netsuite?.options?.config?.errorFields?.subsidiary ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              canWriteAccounting && netSuiteSubsidiaryList?.length > 1
-                                  ? () => {
-                                        Navigation.navigate(ROUTES.POLICY_ACCOUNTING_NETSUITE_SUBSIDIARY_SELECTOR.getRoute(policyID));
-                                    }
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.SAGE_INTACCT:
-                return !sageIntacctEntityList.length
-                    ? {}
-                    : {
-                          description: translate('workspace.intacct.entity'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.SAGE_INTACCT,
-                          iconRight: icons.ArrowRight,
-                          title: getCurrentSageIntacctEntityName(policy, translate('workspace.common.topLevel')),
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.intacct?.config?.pendingFields?.entity,
-                          brickRoadIndicator: policy?.connections?.intacct?.config?.errorFields?.entity ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress: canWriteAccounting ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_SAGE_INTACCT_ENTITY.getRoute(policyID)) : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.QBO:
-                return !policy?.connections?.quickbooksOnline?.config?.companyName
-                    ? {}
-                    : {
-                          description: translate(isConnectedToIntuitEnterpriseSuite ? 'workspace.qbo.entity' : 'workspace.qbo.connectedTo'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.QBO,
-                          iconRight: isConnectedToIntuitEnterpriseSuite ? icons.ArrowRight : undefined,
-                          title: policy?.connections?.quickbooksOnline?.config?.companyName,
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: isConnectedToIntuitEnterpriseSuite && canWriteAccounting,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: isConnectedToIntuitEnterpriseSuite && canWriteAccounting,
-                          pendingAction: policy?.connections?.quickbooksOnline?.config?.pendingFields?.realmId,
-                          brickRoadIndicator: policy?.connections?.quickbooksOnline?.config?.errorFields?.realmId ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              isConnectedToIntuitEnterpriseSuite && canWriteAccounting && policyID
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_INTUIT_ENTERPRISE_SUITE_ENTITY_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.CERTINIA:
-                return !isCertiniaFFAConnection(certiniaConfig)
-                    ? {}
-                    : {
-                          description: translate('workspace.certinia.company'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.CERTINIA,
-                          iconRight: icons.ArrowRight,
-                          title: selectedCertiniaCompany?.name ?? certiniaCompanyID ?? translate('common.none'),
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: settingsPendingAction([certiniaCompanyField], certiniaConfig?.pendingFields),
-                          brickRoadIndicator: areSettingsInErrorFields([certiniaCompanyField], certiniaConfig?.errorFields) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress: canWriteAccounting ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_CERTINIA_COMPANY_SELECTOR.getRoute(policyID)) : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.RILLET:
-                return !rilletSubsidiaryList?.length
-                    ? {}
-                    : {
-                          description: translate('workspace.rillet.entity'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.RILLET,
-                          iconRight: icons.ArrowRight,
-                          title: rilletSubsidiaryList?.find((subsidiary) => subsidiary.id === policy?.connections?.rillet?.config?.subsidiaryID)?.tradeName ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && rilletSubsidiaryList && rilletSubsidiaryList.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.rillet?.config.pendingFields?.subsidiaryID,
-                          brickRoadIndicator: policy?.connections?.rillet?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              policyID && canWriteAccounting && rilletSubsidiaryList && rilletSubsidiaryList.length > 1
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_RILLET_SUBSIDIARY_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.DUALENTRY:
-                return !dualEntryCompanyList?.length
-                    ? {}
-                    : {
-                          description: translate('workspace.dualEntry.company'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.DUAL_ENTRY,
-                          iconRight: icons.ArrowRight,
-                          title: dualEntryCompanyList?.find((company) => company.id === policy?.connections?.dualEntry?.config?.subsidiaryID)?.name ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && dualEntryCompanyList && dualEntryCompanyList.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.dualEntry?.config.pendingFields?.subsidiaryID,
-                          brickRoadIndicator: policy?.connections?.dualEntry?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              policyID && canWriteAccounting && dualEntryCompanyList && dualEntryCompanyList.length > 1
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_DUALENTRY_SUBSIDIARY_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.CAMPFIRE:
-                return !campfireSubsidiaryList?.length
-                    ? {}
-                    : {
-                          description: translate('workspace.campfire.entity'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.CAMPFIRE,
-                          iconRight: icons.ArrowRight,
-                          title: campfireSubsidiaryList?.find((subsidiary) => subsidiary.id === policy?.connections?.campfire?.config?.subsidiaryID)?.name ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && campfireSubsidiaryList && campfireSubsidiaryList.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.campfire?.config.pendingFields?.subsidiaryID,
-                          brickRoadIndicator: policy?.connections?.campfire?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              policyID && canWriteAccounting && campfireSubsidiaryList && campfireSubsidiaryList.length > 1
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_CAMPFIRE_SUBSIDIARY_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.BUSINESS_CENTRAL:
-                return !businessCentralCompanyList?.length
-                    ? {}
-                    : {
-                          description: translate('workspace.businessCentral.subsidiary'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.BUSINESS_CENTRAL,
-                          iconRight: icons.ArrowRight,
-                          title: businessCentralCompanyList.find((company) => company.id === policy?.connections?.businessCentral?.config?.companyID)?.displayName ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && businessCentralCompanyList.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting,
-                          pendingAction: policy?.connections?.businessCentral?.config.pendingFields?.companyID,
-                          brickRoadIndicator: policy?.connections?.businessCentral?.config.errorFields?.companyID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
-                          onPress:
-                              policyID && canWriteAccounting && businessCentralCompanyList.length > 1
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_BUSINESS_CENTRAL_COMPANY_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
-            case CONST.POLICY.CONNECTIONS.NAME.ZOHO_BOOKS:
-                return !zohoBooksOrganizationList?.length
-                    ? {}
-                    : {
-                          description: translate('workspace.zohoBooks.organization'),
-                          sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.ZOHO_BOOKS,
-                          iconRight: icons.ArrowRight,
-                          title: currentZohoBooksOrganization?.name ?? '',
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowRightIcon: canWriteAccounting && zohoBooksOrganizationList.length > 1,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: canWriteAccounting && zohoBooksOrganizationList.length > 1,
-                          pendingAction: policy?.connections?.zohoBooks?.config?.pendingFields?.subsidiaryID,
-                          brickRoadIndicator:
-                              !!policy?.connections?.zohoBooks?.config?.errorFields?.subsidiaryID || !!currentZohoBooksOrganization?.isMultiLocation
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.xero.organization'),
+                              sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.XERO,
+                              iconRight: icons.ArrowRight,
+                              title: getCurrentXeroOrganizationName(policy),
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowRightIcon: canWriteAccounting && tenants.length > 1,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: canWriteAccounting,
+                              onPress:
+                                  canWriteAccounting && tenants.length > 1
+                                      ? () => {
+                                            Navigation.navigate(ROUTES.POLICY_ACCOUNTING_XERO_ORGANIZATION.getRoute(policyID, currentXeroOrganization?.id));
+                                        }
+                                      : undefined,
+                              pendingAction: settingsPendingAction([CONST.XERO_CONFIG.TENANT_ID], policy?.connections?.xero?.config?.pendingFields),
+                              brickRoadIndicator: areSettingsInErrorFields([CONST.XERO_CONFIG.TENANT_ID], policy?.connections?.xero?.config?.errorFields)
                                   ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR
                                   : undefined,
-                          onPress:
-                              policyID && canWriteAccounting && zohoBooksOrganizationList.length > 1
-                                  ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_ZOHO_BOOKS_ORGANIZATION_SELECTOR.getRoute(policyID))
-                                  : undefined,
-                      };
+                          },
+                      ];
+            case CONST.POLICY.CONNECTIONS.NAME.NETSUITE: {
+                const items: IntegrationMenuItem[] = [];
+                if (policy?.connections?.netsuite?.options?.config?.subsidiary) {
+                    items.push({
+                        description: translate('workspace.netsuite.subsidiary'),
+                        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.NETSUITE,
+                        iconRight: icons.ArrowRight,
+                        title: policy?.connections?.netsuite?.options?.config?.subsidiary ?? '',
+                        titleStyle: styles.fontWeightNormal,
+                        shouldShowRightIcon: canWriteAccounting && netSuiteSubsidiaryList?.length > 1,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: canWriteAccounting,
+                        pendingAction: policy?.connections?.netsuite?.options?.config?.pendingFields?.subsidiary,
+                        brickRoadIndicator: policy?.connections?.netsuite?.options?.config?.errorFields?.subsidiary ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                        onPress:
+                            canWriteAccounting && netSuiteSubsidiaryList?.length > 1
+                                ? () => {
+                                      Navigation.navigate(ROUTES.POLICY_ACCOUNTING_NETSUITE_SUBSIDIARY_SELECTOR.getRoute(policyID));
+                                  }
+                                : undefined,
+                    });
+                }
+                const netSuiteAccountID = policy?.connections?.netsuite?.accountID;
+                if (netSuiteAccountID) {
+                    items.push({
+                        description: translate('workspace.netsuite.accountID'),
+                        title: netSuiteAccountID,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                return items;
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.SAGE_INTACCT: {
+                const items: IntegrationMenuItem[] = [];
+                if (sageIntacctEntityList.length) {
+                    items.push({
+                        description: translate('workspace.intacct.entity'),
+                        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.SAGE_INTACCT,
+                        iconRight: icons.ArrowRight,
+                        title: getCurrentSageIntacctEntityName(policy, translate('workspace.common.topLevel')),
+                        titleStyle: styles.fontWeightNormal,
+                        shouldShowRightIcon: canWriteAccounting,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: canWriteAccounting,
+                        pendingAction: policy?.connections?.intacct?.config?.pendingFields?.entity,
+                        brickRoadIndicator: policy?.connections?.intacct?.config?.errorFields?.entity ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                        onPress: canWriteAccounting ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_SAGE_INTACCT_ENTITY.getRoute(policyID)) : undefined,
+                    });
+                }
+                const credentials = policy?.connections?.intacct?.config?.credentials;
+                if (credentials?.companyID) {
+                    items.push({
+                        description: translate('common.companyID'),
+                        title: credentials.companyID,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                if (credentials?.userID) {
+                    items.push({
+                        description: translate('common.userID'),
+                        title: credentials.userID,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                return items;
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.QBO: {
+                const items: IntegrationMenuItem[] = [];
+                if (policy?.connections?.quickbooksOnline?.config?.companyName) {
+                    items.push({
+                        description: translate(isConnectedToIntuitEnterpriseSuite ? 'workspace.qbo.entity' : 'workspace.qbo.connectedTo'),
+                        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.QBO,
+                        iconRight: isConnectedToIntuitEnterpriseSuite ? icons.ArrowRight : undefined,
+                        title: policy?.connections?.quickbooksOnline?.config?.companyName,
+                        titleStyle: styles.fontWeightNormal,
+                        shouldShowRightIcon: isConnectedToIntuitEnterpriseSuite && canWriteAccounting,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: isConnectedToIntuitEnterpriseSuite && canWriteAccounting,
+                        pendingAction: policy?.connections?.quickbooksOnline?.config?.pendingFields?.realmId,
+                        brickRoadIndicator: policy?.connections?.quickbooksOnline?.config?.errorFields?.realmId ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                        onPress:
+                            isConnectedToIntuitEnterpriseSuite && canWriteAccounting && policyID
+                                ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_INTUIT_ENTERPRISE_SUITE_ENTITY_SELECTOR.getRoute(policyID))
+                                : undefined,
+                    });
+                }
+                const realmId = policy?.connections?.quickbooksOnline?.config?.realmId;
+                if (realmId) {
+                    items.push({
+                        description: translate('common.companyID'),
+                        title: realmId,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                return items;
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.QBD: {
+                const companyFileName = policy?.connections?.quickbooksDesktop?.config?.credentials?.companyFileName;
+                if (!companyFileName) {
+                    return [];
+                }
+                return [
+                    {
+                        description: translate('workspace.qbd.companyFile'),
+                        title: companyFileName,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    },
+                ];
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.CERTINIA: {
+                const items: IntegrationMenuItem[] = [];
+                if (isCertiniaFFAConnection(certiniaConfig)) {
+                    items.push({
+                        description: translate('workspace.certinia.company'),
+                        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.CERTINIA,
+                        iconRight: icons.ArrowRight,
+                        title: selectedCertiniaCompany?.name ?? certiniaCompanyID ?? translate('common.none'),
+                        titleStyle: styles.fontWeightNormal,
+                        shouldShowRightIcon: canWriteAccounting,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: canWriteAccounting,
+                        pendingAction: settingsPendingAction([certiniaCompanyField], certiniaConfig?.pendingFields),
+                        brickRoadIndicator: areSettingsInErrorFields([certiniaCompanyField], certiniaConfig?.errorFields) ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                        onPress: canWriteAccounting ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_CERTINIA_COMPANY_SELECTOR.getRoute(policyID)) : undefined,
+                    });
+                }
+                const enterpriseUrl = policy?.connections?.financialforce?.config?.credentials?.enterpriseUrl;
+                if (enterpriseUrl) {
+                    items.push({
+                        description: translate('workspace.certinia.salesforceInstanceUrl'),
+                        title: enterpriseUrl,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                return items;
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.RILLET:
+                return !rilletSubsidiaryList?.length
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.rillet.entity'),
+                              sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.RILLET,
+                              iconRight: icons.ArrowRight,
+                              title: rilletSubsidiaryList?.find((subsidiary) => subsidiary.id === policy?.connections?.rillet?.config?.subsidiaryID)?.tradeName ?? '',
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowRightIcon: canWriteAccounting && rilletSubsidiaryList && rilletSubsidiaryList.length > 1,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: canWriteAccounting,
+                              pendingAction: policy?.connections?.rillet?.config.pendingFields?.subsidiaryID,
+                              brickRoadIndicator: policy?.connections?.rillet?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                              onPress:
+                                  policyID && canWriteAccounting && rilletSubsidiaryList && rilletSubsidiaryList.length > 1
+                                      ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_RILLET_SUBSIDIARY_SELECTOR.getRoute(policyID))
+                                      : undefined,
+                          },
+                      ];
+            case CONST.POLICY.CONNECTIONS.NAME.DUALENTRY:
+                return !dualEntryCompanyList?.length
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.dualEntry.company'),
+                              sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.DUAL_ENTRY,
+                              iconRight: icons.ArrowRight,
+                              title: dualEntryCompanyList?.find((company) => company.id === policy?.connections?.dualEntry?.config?.subsidiaryID)?.name ?? '',
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowRightIcon: canWriteAccounting && dualEntryCompanyList && dualEntryCompanyList.length > 1,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: canWriteAccounting,
+                              pendingAction: policy?.connections?.dualEntry?.config.pendingFields?.subsidiaryID,
+                              brickRoadIndicator: policy?.connections?.dualEntry?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                              onPress:
+                                  policyID && canWriteAccounting && dualEntryCompanyList && dualEntryCompanyList.length > 1
+                                      ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_DUALENTRY_SUBSIDIARY_SELECTOR.getRoute(policyID))
+                                      : undefined,
+                          },
+                      ];
+            case CONST.POLICY.CONNECTIONS.NAME.CAMPFIRE:
+                return !campfireSubsidiaryList?.length
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.campfire.entity'),
+                              sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.CAMPFIRE,
+                              iconRight: icons.ArrowRight,
+                              title: campfireSubsidiaryList?.find((subsidiary) => subsidiary.id === policy?.connections?.campfire?.config?.subsidiaryID)?.name ?? '',
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowRightIcon: canWriteAccounting && campfireSubsidiaryList && campfireSubsidiaryList.length > 1,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: canWriteAccounting,
+                              pendingAction: policy?.connections?.campfire?.config.pendingFields?.subsidiaryID,
+                              brickRoadIndicator: policy?.connections?.campfire?.config.errorFields?.subsidiaryID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                              onPress:
+                                  policyID && canWriteAccounting && campfireSubsidiaryList && campfireSubsidiaryList.length > 1
+                                      ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_CAMPFIRE_SUBSIDIARY_SELECTOR.getRoute(policyID))
+                                      : undefined,
+                          },
+                      ];
+            case CONST.POLICY.CONNECTIONS.NAME.BUSINESS_CENTRAL: {
+                const items: IntegrationMenuItem[] = [];
+                if (businessCentralCompanyList?.length) {
+                    items.push({
+                        description: translate('workspace.businessCentral.subsidiary'),
+                        sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.BUSINESS_CENTRAL,
+                        iconRight: icons.ArrowRight,
+                        title: businessCentralCompanyList.find((company) => company.id === policy?.connections?.businessCentral?.config?.companyID)?.displayName ?? '',
+                        titleStyle: styles.fontWeightNormal,
+                        shouldShowRightIcon: canWriteAccounting && businessCentralCompanyList.length > 1,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: canWriteAccounting,
+                        pendingAction: policy?.connections?.businessCentral?.config.pendingFields?.companyID,
+                        brickRoadIndicator: policy?.connections?.businessCentral?.config.errorFields?.companyID ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR : undefined,
+                        onPress:
+                            policyID && canWriteAccounting && businessCentralCompanyList.length > 1
+                                ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_BUSINESS_CENTRAL_COMPANY_SELECTOR.getRoute(policyID))
+                                : undefined,
+                    });
+                }
+                const environmentName = policy?.connections?.businessCentral?.config?.credentials?.environmentName;
+                if (environmentName) {
+                    items.push({
+                        description: translate('common.environmentName'),
+                        title: environmentName,
+                        titleStyle: styles.fontWeightNormal,
+                        numberOfLinesTitle: 0,
+                        shouldShowDescriptionOnTop: true,
+                        interactive: false,
+                        shouldKeepOnAuthError: true,
+                    });
+                }
+                return items;
+            }
+            case CONST.POLICY.CONNECTIONS.NAME.ZOHO_BOOKS:
+                return !zohoBooksOrganizationList?.length
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.zohoBooks.organization'),
+                              sentryLabel: CONST.SENTRY_LABEL.WORKSPACE.CONNECTIONS.ACCOUNTING_ENTITY_ROW.ZOHO_BOOKS,
+                              iconRight: icons.ArrowRight,
+                              title: currentZohoBooksOrganization?.name ?? '',
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowRightIcon: canWriteAccounting && zohoBooksOrganizationList.length > 1,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: canWriteAccounting && zohoBooksOrganizationList.length > 1,
+                              pendingAction: policy?.connections?.zohoBooks?.config?.pendingFields?.subsidiaryID,
+                              brickRoadIndicator:
+                                  !!policy?.connections?.zohoBooks?.config?.errorFields?.subsidiaryID || !!currentZohoBooksOrganization?.isMultiLocation
+                                      ? CONST.BRICK_ROAD_INDICATOR_STATUS.ERROR
+                                      : undefined,
+                              onPress:
+                                  policyID && canWriteAccounting && zohoBooksOrganizationList.length > 1
+                                      ? () => Navigation.navigate(ROUTES.POLICY_ACCOUNTING_ZOHO_BOOKS_ORGANIZATION_SELECTOR.getRoute(policyID))
+                                      : undefined,
+                          },
+                      ];
             case CONST.POLICY.CONNECTIONS.NAME.DIGITS:
                 // A Digits sign-in covers exactly one company, so there is nothing to pick here. Another company needs a new sign-in.
                 return !digitsCompanyName
-                    ? {}
-                    : {
-                          description: translate('workspace.digits.entity'),
-                          title: digitsCompanyName,
-                          titleStyle: styles.fontWeightNormal,
-                          shouldShowDescriptionOnTop: true,
-                          interactive: false,
-                      };
+                    ? []
+                    : [
+                          {
+                              description: translate('workspace.digits.entity'),
+                              title: digitsCompanyName,
+                              titleStyle: styles.fontWeightNormal,
+                              shouldShowDescriptionOnTop: true,
+                              interactive: false,
+                          },
+                      ];
 
             default:
-                return undefined;
+                return [];
         }
     };
     const integrationSpecificMenuItems = getIntegrationSpecificMenuItems();
@@ -575,10 +694,18 @@ function useConnectedAccountingIntegration(policy: OnyxEntry<Policy>, {onDisconn
             : [];
 
         // The selected subsidiary or entity can be what breaks a sync, so only an authentication error hides its row.
+        const visibleIntegrationSpecificMenuItems = integrationSpecificMenuItems.filter((item) => {
+            if (isEmptyObject(item) || !item.title) {
+                return false;
+            }
+            if (hasAuthError && !shouldKeepIntegrationSpecificMenuItemOnAuthError && !item.shouldKeepOnAuthError) {
+                return false;
+            }
+            return true;
+        });
+
         const settingsMenuItems: MenuItemData[] = [
-            ...(isEmptyObject(integrationSpecificMenuItems) || (hasAuthError && !shouldKeepIntegrationSpecificMenuItemOnAuthError) || !hasAccountingConnection
-                ? []
-                : [integrationSpecificMenuItems]),
+            ...(!hasAccountingConnection ? [] : visibleIntegrationSpecificMenuItems),
             ...(!hasAccountingConnection || !isConnectionVerified ? [] : configurationOptions),
         ];
         return {icon: integrationData?.icon, title: integrationData?.title, connectionMessage, settingsMenuItems};

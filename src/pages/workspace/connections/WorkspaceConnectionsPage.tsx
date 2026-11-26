@@ -313,14 +313,16 @@ function WorkspaceConnectionsPage({policy}: WithPolicyConnectionsProps) {
                     onDismiss={() => clearPolicyErrorField(policyID, CONST.POLICY.MORE_FEATURES.ARE_RECEIPT_PARTNERS_ENABLED)}
                 />
                 {connectedListings.length > 0 && (
-                    <View style={styles.mb4}>
+                    <View style={styles.mb6}>
+                        <Text style={[styles.headerText, styles.mb4]}>{translate('workspace.connections.activeConnections')}</Text>
                         <ConnectionsGrid
                             listings={connectedListings}
                             policyID={policyID}
                         />
                     </View>
                 )}
-                <View style={[connectedListings.length > 0 ? styles.mt6 : styles.mt3, !shouldUseSingleColumn && [styles.flexRow, styles.alignItemsCenter, styles.gap5]]}>
+                <Text style={[styles.headerText, styles.mb4]}>{translate('workspace.connections.otherConnections')}</Text>
+                <View style={[!shouldUseSingleColumn && [styles.flexRow, styles.alignItemsCenter, styles.gap5]]}>
                     <View style={[styles.flex1, styles.flexRow, shouldUseNarrowLayout && styles.mhn5]}>
                         <TabSelectorContextProvider activeTabKey={selectedTab}>
                             <TabSelectorBase

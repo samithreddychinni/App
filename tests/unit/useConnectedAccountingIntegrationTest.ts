@@ -13,6 +13,7 @@ let mockConnectedIntegration: ConnectionName | undefined;
 let mockSynchronizationError: string | undefined;
 let mockIsAuthenticationError = false;
 
+jest.mock('@expensify/react-native-hybrid-app', () => ({isHybridApp: () => false}));
 jest.mock('@hooks/useCardFeeds', () => () => [undefined]);
 jest.mock('@hooks/useCardsLists', () => () => [undefined]);
 jest.mock('@hooks/useConfirmModal', () => () => ({showConfirmModal: jest.fn()}));
@@ -396,6 +397,175 @@ describe('useConnectedAccountingIntegration', () => {
 
             // Then the Entity row is hidden like other connectors' rows, since the admin has to sign in to Digits again first
             expect(descriptions).not.toContain('workspace.digits.entity');
+        });
+    });
+
+    describe('Connection identifier rows', () => {
+        it('should show read-only NetSuite Account ID and keep it on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.NETSUITE;
+            const policyWithAccount: Policy = {
+                ...netSuitePolicy,
+                connections: {
+                    ...netSuitePolicy.connections,
+                    [CONST.POLICY.CONNECTIONS.NAME.NETSUITE]: {
+                        ...netSuitePolicy.connections?.[CONST.POLICY.CONNECTIONS.NAME.NETSUITE],
+                        accountID: 'TSTDRV12345',
+                    },
+                } as Policy['connections'],
+            };
+
+            const item = getSettingsMenuItem(policyWithAccount, 'workspace.netsuite.accountID');
+            expect(item?.title).toBe('TSTDRV12345');
+            expect(item?.interactive).toBe(false);
+            expect(item?.shouldShowDescriptionOnTop).toBe(true);
+
+            // On authentication error
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(policyWithAccount);
+            expect(descriptions).not.toContain('workspace.netsuite.subsidiary');
+            expect(descriptions).toContain('workspace.netsuite.accountID');
+        });
+
+        it('should show read-only Sage Intacct Company ID and User ID and keep them on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.SAGE_INTACCT;
+            const intacctPolicy: Policy = {
+                ...policy,
+                connections: {
+                    [CONST.POLICY.CONNECTIONS.NAME.SAGE_INTACCT]: {
+                        config: {
+                            credentials: {
+                                companyID: 'ACME_CORP',
+                                userID: 'admin_sync',
+                            },
+                        },
+                        data: {
+                            entities: [{id: '1', name: 'Top Level'}],
+                        },
+                    },
+                } as Policy['connections'],
+            };
+
+            const companyItem = getSettingsMenuItem(intacctPolicy, 'common.companyID');
+            expect(companyItem?.title).toBe('ACME_CORP');
+            expect(companyItem?.interactive).toBe(false);
+
+            const userItem = getSettingsMenuItem(intacctPolicy, 'common.userID');
+            expect(userItem?.title).toBe('admin_sync');
+            expect(userItem?.interactive).toBe(false);
+
+            // On authentication error
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(intacctPolicy);
+            expect(descriptions).not.toContain('workspace.intacct.entity');
+            expect(descriptions).toContain('common.companyID');
+            expect(descriptions).toContain('common.userID');
+        });
+
+        it('should show read-only QBO Company ID from realmId and keep it on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.QBO;
+            const qboPolicy: Policy = {
+                ...policy,
+                connections: {
+                    [CONST.POLICY.CONNECTIONS.NAME.QBO]: {
+                        config: {
+                            companyName: 'Acme QBO',
+                            realmId: '91303482348',
+                        },
+                    },
+                } as Policy['connections'],
+            };
+
+            const item = getSettingsMenuItem(qboPolicy, 'common.companyID');
+            expect(item?.title).toBe('91303482348');
+            expect(item?.interactive).toBe(false);
+
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(qboPolicy);
+            expect(descriptions).toContain('common.companyID');
+        });
+
+        it('should show read-only QBD Company file and keep it on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.QBD;
+            const qbdPolicy: Policy = {
+                ...policy,
+                connections: {
+                    [CONST.POLICY.CONNECTIONS.NAME.QBD]: {
+                        config: {
+                            credentials: {
+                                companyFileName: 'AcmeBooks.qbw',
+                            },
+                        },
+                    },
+                } as Policy['connections'],
+            };
+
+            const item = getSettingsMenuItem(qbdPolicy, 'workspace.qbd.companyFile');
+            expect(item?.title).toBe('AcmeBooks.qbw');
+            expect(item?.interactive).toBe(false);
+
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(qbdPolicy);
+            expect(descriptions).toContain('workspace.qbd.companyFile');
+        });
+
+        it('should show read-only Business Central Environment and keep it on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.BUSINESS_CENTRAL;
+            const bcPolicy: Policy = {
+                ...policy,
+                connections: {
+                    [CONST.POLICY.CONNECTIONS.NAME.BUSINESS_CENTRAL]: {
+                        config: {
+                            credentials: {
+                                environmentName: 'Production_US',
+                            },
+                        },
+                    },
+                } as Policy['connections'],
+            };
+
+            const item = getSettingsMenuItem(bcPolicy, 'common.environmentName');
+            expect(item?.title).toBe('Production_US');
+            expect(item?.interactive).toBe(false);
+
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(bcPolicy);
+            expect(descriptions).toContain('common.environmentName');
+        });
+
+        it('should show read-only Certinia Salesforce instance URL and keep it on authentication error', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.CERTINIA;
+            const certiniaPolicy: Policy = {
+                ...policy,
+                connections: {
+                    [CONST.POLICY.CONNECTIONS.NAME.CERTINIA]: {
+                        config: {
+                            credentials: {
+                                enterpriseUrl: 'https://na139.salesforce.com',
+                            },
+                        },
+                    },
+                } as Policy['connections'],
+            };
+
+            const item = getSettingsMenuItem(certiniaPolicy, 'workspace.certinia.salesforceInstanceUrl');
+            expect(item?.title).toBe('https://na139.salesforce.com');
+            expect(item?.interactive).toBe(false);
+
+            mockSynchronizationError = 'Auth failed';
+            mockIsAuthenticationError = true;
+            const descriptions = getSettingsMenuItemDescriptions(certiniaPolicy);
+            expect(descriptions).toContain('workspace.certinia.salesforceInstanceUrl');
+        });
+
+        it('should not add identifier rows when stored values are empty or undefined', () => {
+            mockConnectedIntegration = CONST.POLICY.CONNECTIONS.NAME.NETSUITE;
+            const descriptions = getSettingsMenuItemDescriptions(netSuitePolicy);
+            expect(descriptions).not.toContain('workspace.netsuite.accountID');
         });
     });
 });

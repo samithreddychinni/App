@@ -5967,6 +5967,8 @@ const translations = {
                 [CONST.TAB.CONNECTIONS.RECEIPTS]: 'Receipts',
                 [CONST.TAB.CONNECTIONS.AI]: 'AI & MCP',
             },
+            activeConnections: 'Active connections',
+            otherConnections: 'Other connections',
             findConnections: 'Find connections',
             configure: 'Configure',
             fix: 'Fix',
@@ -6048,6 +6050,7 @@ const translations = {
             missingPerDiemUnit: "Per diem isn't set up correctly on this workspace. Please reach out to Concierge for help.",
         },
         qbd: {
+            companyFile: 'Company file',
             exportOutOfPocketExpensesDescription: 'Set how out-of-pocket expenses export to QuickBooks Desktop.',
             exportOutOfPocketExpensesCheckToggle: 'Mark checks as “print later”',
             exportDescription: 'Configure how Expensify data exports to QuickBooks Desktop.',
@@ -6459,6 +6462,7 @@ const translations = {
             },
         },
         certinia: {
+            salesforceInstanceUrl: 'Salesforce instance URL',
             title: 'Certinia',
             titleFFA: 'Certinia (FFA)',
             titlePSA: 'Certinia (PSA)',
@@ -6569,6 +6573,7 @@ const translations = {
             },
         },
         netsuite: {
+            accountID: 'Account ID',
             subsidiary: 'Subsidiary',
             subsidiarySelectDescription: "Choose the subsidiary in NetSuite that you'd like to import data from.",
             exportDescription: 'Configure how Expensify data exports to NetSuite.',

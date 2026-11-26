@@ -3576,11 +3576,22 @@ type QBDExportConfig = {
 };
 
 /**
+ * User credentials for the QuickBooks Desktop accounting integration.
+ */
+type QBDCredentials = {
+    /** QuickBooks Desktop company file name */
+    companyFileName?: string;
+};
+
+/**
  * User configuration for the QuickBooks Desktop accounting integration.
  */
 type QBDConnectionConfig = OnyxCommon.OnyxValueWithOfflineFeedback<
     {
         apiProvider: string;
+
+        /** User credentials for QuickBooks Desktop */
+        credentials?: QBDCredentials;
 
         /** Configuration of automatic synchronization from QuickBooks Desktop to the app */
         autoSync: {
