@@ -1,7 +1,7 @@
 import {write} from '@libs/API';
 import type {CreateWorkspaceApprovalParams, RemoveWorkspaceApprovalParams, SetApprovalWorkflowParams, UpdateWorkspaceApprovalParams} from '@libs/API/parameters';
 import {WRITE_COMMANDS} from '@libs/API/types';
-import {getDefaultApprover, hasDynamicExternalWorkflow, shouldFilterExpensifyTeam} from '@libs/PolicyUtils';
+import {getDefaultApprover, hasDynamicExternalWorkflow, isPolicyApprover, shouldFilterExpensifyTeam} from '@libs/PolicyUtils';
 import type {ApprovalWorkflowRulesDiff} from '@libs/RuleUtils';
 import {getApprovalWorkflowRulesForPolicy} from '@libs/RuleUtils';
 import {
@@ -27,12 +27,13 @@ import {
     reconcileApprovalWorkflowRulesForEdit,
     reconcileApprovalWorkflowRulesForMembersChange,
     reconcileApprovalWorkflowRulesForRemove,
+    updateWorkflowDataOnApproverRemoval,
 } from '@libs/WorkflowUtils';
 
 import CONST from '@src/CONST';
 import type {TranslationPaths} from '@src/languages/types';
 import ONYXKEYS from '@src/ONYXKEYS';
-import type {ApprovalWorkflowOnyx, PersonalDetailsList, Policy, Report} from '@src/types/onyx';
+import type {ApprovalWorkflowOnyx, PersonalDetails, PersonalDetailsList, Policy, Report} from '@src/types/onyx';
 import type {Approver, Member} from '@src/types/onyx/ApprovalWorkflow';
 import type ApprovalWorkflow from '@src/types/onyx/ApprovalWorkflow';
 import type {ApprovalWorkflowRule} from '@src/types/onyx/ApprovalWorkflowRules';
@@ -842,6 +843,79 @@ function saveFastEditApprovalWorkflow({approvalWorkflow, policy, rules, shouldUs
     clearApprovalWorkflow();
 }
 
+type UpdateApprovalWorkflowsOnApproverRemovalParams = {
+    policy: OnyxEntry<Policy>;
+    approvalWorkflows: ApprovalWorkflow[];
+    removedApproverEmails: string[];
+    ownerEmail: string;
+    ownerDetails?: OnyxEntry<PersonalDetails>;
+    shouldUseApprovalWorkflowRules?: boolean;
+    rulesCollection?: OnyxCollection<Rule>;
+    currentUserLogin?: string;
+};
+
+/**
+ * Updates or removes approval workflows when workspace members are removed from the workspace.
+ */
+function updateApprovalWorkflowsOnApproverRemoval({
+    policy,
+    approvalWorkflows,
+    removedApproverEmails,
+    ownerEmail,
+    ownerDetails,
+    shouldUseApprovalWorkflowRules,
+    rulesCollection,
+    currentUserLogin,
+}: UpdateApprovalWorkflowsOnApproverRemovalParams) {
+    if (!policy || !ownerEmail || removedApproverEmails.length === 0) {
+        return;
+    }
+
+    const isApprover = (email: string) => isPolicyApprover(policy, email) || approvalWorkflows.some((workflow) => workflow.approvers.some((approver) => approver.email === email));
+    const approversToRemove = removedApproverEmails.filter(isApprover);
+    if (approversToRemove.length === 0) {
+        return;
+    }
+
+    const defaultApprovalWorkflow = approvalWorkflows.find((workflow) => workflow.isDefault);
+    let currentWorkflows = approvalWorkflows;
+
+    for (const login of approversToRemove) {
+        const updatedWorkflows = updateWorkflowDataOnApproverRemoval({
+            approvalWorkflows: currentWorkflows,
+            removedApproverEmail: login,
+            ownerEmail,
+            ownerDetails,
+        });
+
+        currentWorkflows = updatedWorkflows.filter((workflow) => !workflow.removeApprovalWorkflow);
+
+        for (const workflow of updatedWorkflows) {
+            if (workflow?.removeApprovalWorkflow) {
+                if (shouldUseApprovalWorkflowRules && rulesCollection) {
+                    removeApprovalWorkflowRules(workflow, policy, rulesCollection, defaultApprovalWorkflow);
+                } else {
+                    const {removeApprovalWorkflow: _, ...updatedWorkflow} = workflow;
+                    removeApprovalWorkflow(updatedWorkflow, policy);
+                }
+            } else if (shouldUseApprovalWorkflowRules && rulesCollection) {
+                const initialApprovalWorkflow =
+                    approvalWorkflows.find((w) => (workflow.isDefault ? w.isDefault : w.members.some((m) => workflow.members.some((wm) => wm.email === m.email)))) ?? workflow;
+                updateApprovalWorkflowRules({
+                    approvalWorkflow: workflow,
+                    initialApprovalWorkflow,
+                    policy,
+                    rules: rulesCollection,
+                    defaultApprovalWorkflow,
+                    currentUserLogin,
+                });
+            } else {
+                updateApprovalWorkflow(workflow, [], [], policy);
+            }
+        }
+    }
+}
+
 type ApprovalWorkflowOnyxValidated = Omit<ApprovalWorkflowOnyx, 'approvers'> & {approvers: Approver[]};
 
 /**
@@ -907,4 +981,5 @@ export {
     saveFastEditApprovalWorkflow,
     validateApprovalWorkflow,
     setApprovalWorkflowIsInitialFlow,
+    updateApprovalWorkflowsOnApproverRemoval,
 };

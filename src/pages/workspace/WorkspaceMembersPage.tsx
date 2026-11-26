@@ -51,7 +51,7 @@ import {
     setMembersSelectedForRoleChange,
     setWorkspaceMembersSelectedForBulkEdit,
 } from '@libs/actions/Policy/Member';
-import {removeApprovalWorkflow as removeApprovalWorkflowAction, updateApprovalWorkflow} from '@libs/actions/Workflow';
+import {updateApprovalWorkflowsOnApproverRemoval} from '@libs/actions/Workflow';
 import {isRuleBotEnforcingRules} from '@libs/AgentRulesUtils';
 import {getLatestErrorMessageField} from '@libs/ErrorUtils';
 import {getConnectedHRProvider} from '@libs/merge/HRUtils';
@@ -91,7 +91,7 @@ import type {MemberEmailsToAccountIDs} from '@libs/PolicyUtils';
 import {getDisplayNameForParticipant, isApproverOfOutstandingPolicyReports} from '@libs/ReportUtils';
 import getShouldPopoverUseScrollView from '@libs/shouldPopoverUseScrollView';
 import {generateAccountID} from '@libs/UserUtils';
-import {getFirstApproverByMemberEmail, hasMultiLevelApprovalWorkflow, updateWorkflowDataOnApproverRemoval} from '@libs/WorkflowUtils';
+import {getFirstApproverByMemberEmail, hasMultiLevelApprovalWorkflow} from '@libs/WorkflowUtils';
 
 import {close} from '@userActions/Modal';
 import {dismissAddedWithPrimaryLoginMessages} from '@userActions/Policy/Policy';
@@ -184,7 +184,7 @@ function WorkspaceMembersPage({route, policy}: WorkspaceMembersPageProps) {
     const privateIsArchivedMap = usePrivateIsArchivedMap();
     const [invitedEmailsToAccountIDsDraft] = useOnyx(`${ONYXKEYS.COLLECTION.WORKSPACE_INVITE_MEMBERS_DRAFT}${policyID}`);
     const [memberBankAccounts] = useOnyx(`${ONYXKEYS.COLLECTION.POLICY_MEMBER_BANK_ACCOUNTS}${policyID}`);
-    const {approvalWorkflows, enforcedApprovalWorkflows, approverPendingActionByMemberEmail, shouldUseApprovalWorkflowRules} = useApprovalWorkflows(policy);
+    const {approvalWorkflows, enforcedApprovalWorkflows, approverPendingActionByMemberEmail, shouldUseApprovalWorkflowRules, rulesCollection} = useApprovalWorkflows(policy);
 
     const shouldShowMemberBankAccounts = isPolicyAdmin(policy) && arePaymentsEnabled(policy);
     const getWorkspaceMembersEvent = useEffectEvent(() => getWorkspaceMembers());
@@ -267,6 +267,7 @@ function WorkspaceMembersPage({route, policy}: WorkspaceMembersPageProps) {
     const approverEmail = selectedEmployees.find(
         (selectedEmployee) =>
             isPolicyApprover(policy, selectedEmployee) ||
+            approvalWorkflows.some((workflow) => workflow.approvers.some((approver) => approver.email === selectedEmployee)) ||
             isApproverOfOutstandingPolicyReports(policyMemberEmailsToAccountIDs[selectedEmployee], outstandingReportsForPolicy, privateIsArchivedMap),
     );
     if (approverEmail) {
@@ -327,35 +328,18 @@ function WorkspaceMembersPage({route, policy}: WorkspaceMembersPageProps) {
      * Please see https://github.com/Expensify/App/blob/main/README.md#Security for more details
      */
     const removeUsers = () => {
-        // Check if any of the members are approvers
-        const hasApprovers = selectedEmployees.some((email) => isPolicyApprover(policy, email));
-
-        if (hasApprovers) {
-            // Fall back to the employeeList email and policy owner, so submitters are still reassigned when personal
-            // details aren't loaded. Skipping it would leave them submitting to someone no longer on the workspace.
-            const ownerEmail = ownerDetails?.login ?? policy?.owner;
-            let currentWorkflows = approvalWorkflows;
-            for (const login of selectedEmployees) {
-                if (!isPolicyApprover(policy, login) || !ownerEmail) {
-                    continue;
-                }
-
-                const updatedWorkflows = updateWorkflowDataOnApproverRemoval({
-                    approvalWorkflows: currentWorkflows,
-                    removedApproverEmail: login,
-                    ownerEmail,
-                    ownerDetails,
-                });
-                currentWorkflows = updatedWorkflows.filter((workflow) => !workflow.removeApprovalWorkflow);
-                for (const workflow of updatedWorkflows) {
-                    if (workflow?.removeApprovalWorkflow) {
-                        const {removeApprovalWorkflow, ...updatedWorkflow} = workflow;
-                        removeApprovalWorkflowAction(updatedWorkflow, policy);
-                    } else {
-                        updateApprovalWorkflow(workflow, [], [], policy);
-                    }
-                }
-            }
+        const ownerEmail = ownerDetails?.login ?? policy?.owner;
+        if (ownerEmail) {
+            updateApprovalWorkflowsOnApproverRemoval({
+                policy,
+                approvalWorkflows,
+                removedApproverEmails: selectedEmployees,
+                ownerEmail,
+                ownerDetails,
+                shouldUseApprovalWorkflowRules,
+                rulesCollection,
+                currentUserLogin,
+            });
         }
 
         setSelectedEmployees([]);

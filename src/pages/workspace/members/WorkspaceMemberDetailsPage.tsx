@@ -42,7 +42,7 @@ import useThemeIllustrations from '@hooks/useThemeIllustrations';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {setPolicyPreventSelfApproval} from '@libs/actions/Policy/Policy';
-import {clearApprovalWorkflow, removeApprovalWorkflow as removeApprovalWorkflowAction, setApprovalWorkflow, updateApprovalWorkflow} from '@libs/actions/Workflow';
+import {clearApprovalWorkflow, setApprovalWorkflow, updateApprovalWorkflowsOnApproverRemoval} from '@libs/actions/Workflow';
 import {isRuleBotEnforcingRules} from '@libs/AgentRulesUtils';
 import {getAllCardsForWorkspace, getCardFeedIcon, getCardFeedWithDomainID, getPlaidInstitutionIconUrl, lastFourNumbersFromCardName, maskCardNumber} from '@libs/CardUtils';
 import {getEnabledCategoriesCount, getMemberVisibleCategoryNames} from '@libs/CategoryUtils';
@@ -72,7 +72,7 @@ import shouldRenderTransferOwnerButton from '@libs/shouldRenderTransferOwnerButt
 import {startSpan} from '@libs/telemetry/activeSpans';
 import {getDefaultAvatarURL} from '@libs/UserAvatarUtils';
 import {getEffectiveWorkArrangement, getMemberLoginByAccountID, getWorkArrangementLabel} from '@libs/WorkArrangementUtils';
-import {getFirstApproverLabel, INITIAL_APPROVAL_WORKFLOW, isApprovalWorkflowLockedByIntegration, updateWorkflowDataOnApproverRemoval} from '@libs/WorkflowUtils';
+import {getFirstApproverLabel, INITIAL_APPROVAL_WORKFLOW, isApprovalWorkflowLockedByIntegration} from '@libs/WorkflowUtils';
 
 import Navigation from '@navigation/Navigation';
 import type {SettingsNavigatorParamList} from '@navigation/types';
@@ -223,7 +223,8 @@ function WorkspaceMemberDetailsPage({policy, route}: WorkspaceMemberDetailsPageP
         isSupportalSession,
     });
 
-    const {approvalWorkflows, enforcedApprovalWorkflows, availableMembers, usedApproverEmails, approverPendingActionByMemberEmail} = useApprovalWorkflows(policy);
+    const {approvalWorkflows, enforcedApprovalWorkflows, availableMembers, usedApproverEmails, approverPendingActionByMemberEmail, shouldUseApprovalWorkflowRules, rulesCollection} =
+        useApprovalWorkflows(policy);
 
     // The label follows this member's own workflow depth, not the workspace's.
     const memberApprovalWorkflow = enforcedApprovalWorkflows.find((workflow) => workflow.members.some((workflowMember) => workflowMember.email === memberLogin));
@@ -298,7 +299,10 @@ function WorkspaceMemberDetailsPage({policy, route}: WorkspaceMemberDetailsPageP
     // the bank name can be an empty string
     const memberBankName = memberBankNameKey ? CONST.BANK_NAMES_USER_FRIENDLY[memberBankNameKey] : memberBankAccount?.bankName || translate('common.bankAccount');
 
-    const isApprover = isPolicyApprover(policy, memberLogin) || isApproverOfOutstandingPolicyReports(accountID, outstandingReportsForPolicy, privateIsArchivedMap);
+    const isApprover =
+        isPolicyApprover(policy, memberLogin) ||
+        approvalWorkflows.some((workflow) => workflow.approvers.some((approver) => approver.email === memberLogin)) ||
+        isApproverOfOutstandingPolicyReports(accountID, outstandingReportsForPolicy, privateIsArchivedMap);
     const isTechnicalContact = policy?.technicalContact === details?.login;
     const exporters = [
         policy?.connections?.intacct?.config?.export?.exporter,
@@ -354,34 +358,21 @@ function WorkspaceMemberDetailsPage({policy, route}: WorkspaceMemberDetailsPageP
     };
 
     const removeUser = () => {
-        // Fall back to the policy owner, so submitters are still reassigned when personal details aren't loaded.
         const ownerEmail = ownerDetails?.login ?? policy?.owner;
 
-        // If the user is not an approver, proceed with member removal
-        if (!memberLogin || !isPolicyApprover(policy, memberLogin) || !ownerEmail) {
-            removeMemberAndCloseModal();
-            return;
+        if (memberLogin && ownerEmail) {
+            updateApprovalWorkflowsOnApproverRemoval({
+                policy,
+                approvalWorkflows,
+                removedApproverEmails: [memberLogin],
+                ownerEmail,
+                ownerDetails,
+                shouldUseApprovalWorkflowRules,
+                rulesCollection,
+                currentUserLogin,
+            });
         }
 
-        // Update approval workflows after approver removal
-        const updatedWorkflows = updateWorkflowDataOnApproverRemoval({
-            approvalWorkflows,
-            removedApproverEmail: memberLogin,
-            ownerEmail,
-            ownerDetails,
-        });
-
-        for (const workflow of updatedWorkflows) {
-            if (workflow?.removeApprovalWorkflow) {
-                const {removeApprovalWorkflow, ...updatedWorkflow} = workflow;
-
-                removeApprovalWorkflowAction(updatedWorkflow, policy);
-            } else {
-                updateApprovalWorkflow(workflow, [], [], policy);
-            }
-        }
-
-        // Remove the member and close the modal
         removeMemberAndCloseModal();
     };
 

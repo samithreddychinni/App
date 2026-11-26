@@ -1,3 +1,10 @@
+jest.mock('@expensify/react-native-hybrid-app', () => ({
+    __esModule: true,
+    default: {
+        isHybridApp: jest.fn(() => false),
+    },
+}));
+
 import {WRITE_COMMANDS} from '@libs/API/types';
 import {INITIAL_APPROVAL_WORKFLOW} from '@libs/WorkflowUtils';
 
@@ -23,6 +30,7 @@ import {
     setApprovalWorkflowMembers,
     updateApprovalWorkflow,
     updateApprovalWorkflowRules,
+    updateApprovalWorkflowsOnApproverRemoval,
     validateApprovalWorkflow,
 } from '@src/libs/actions/Workflow';
 import {getApprovalWorkflowRulesForPolicy, isApprovalWorkflowRule} from '@src/libs/RuleUtils';
@@ -3894,6 +3902,110 @@ describe('actions/Workflow', () => {
 
             await mockFetch.resume();
             await waitForBatchedUpdates();
+        });
+    });
+
+    describe('updateApprovalWorkflowsOnApproverRemoval', () => {
+        it('updates approval workflow rules when the first approver of a default workflow is removed', async () => {
+            mockFetch.pause();
+
+            const policyID = '123456789';
+            const policy: Policy = {
+                ...createRandomPolicy(1),
+                id: policyID,
+                owner: ownerEmail,
+                approver: employee1Email,
+                rules: {},
+                employeeList: {
+                    [ownerEmail]: {email: ownerEmail, role: CONST.POLICY.ROLE.ADMIN},
+                    [employee1Email]: {email: employee1Email, role: CONST.POLICY.ROLE.USER, submitsTo: ownerEmail},
+                    [employee2Email]: {email: employee2Email, role: CONST.POLICY.ROLE.USER, submitsTo: employee1Email},
+                },
+            };
+
+            await createForwardApproveRules(policyID, [employee1Email, employee2Email], employee1Email, 'rule', true);
+
+            const defaultWorkflow: ApprovalWorkflow = {
+                members: [
+                    {email: employee1Email, displayName: employee1Email},
+                    {email: employee2Email, displayName: employee2Email},
+                ],
+                approvers: [
+                    {email: employee1Email, displayName: employee1Email, isCircularReference: false},
+                    {email: ownerEmail, displayName: ownerEmail, isCircularReference: false},
+                ],
+                isDefault: true,
+            };
+
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, policy);
+            await Onyx.merge(ONYXKEYS.SESSION, {authToken: '123456789'});
+            await waitForBatchedUpdates();
+
+            updateApprovalWorkflowsOnApproverRemoval({
+                policy,
+                approvalWorkflows: [defaultWorkflow],
+                removedApproverEmails: [employee1Email],
+                ownerEmail,
+                shouldUseApprovalWorkflowRules: true,
+                rulesCollection: await getRulesCollection(),
+            });
+            await waitForBatchedUpdates();
+
+            const updatedPolicy = await getOnyxValue<Policy>(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`);
+            expect(updatedPolicy?.approver).toBe(ownerEmail);
+
+            const rules = await getActivePolicyRules(policyID);
+            const forwardApprovers = rules
+                .flatMap((rule) => Object.values(rule.actions))
+                .filter((action) => action.name === CONST.RULES.ACTIONS.FORWARD_TO)
+                .map((action) => action.approver);
+            expect(forwardApprovers).toContain(ownerEmail);
+            expect(forwardApprovers).not.toContain(employee1Email);
+
+            await mockFetch.resume();
+            await waitForBatchedUpdates();
+        });
+
+        it('updates legacy approval workflow when shouldUseApprovalWorkflowRules is false', async () => {
+            const policyID = '123456789';
+            const policy: Policy = {
+                ...createRandomPolicy(1),
+                id: policyID,
+                owner: ownerEmail,
+                approver: employee1Email,
+                employeeList: {
+                    [ownerEmail]: {email: ownerEmail, role: CONST.POLICY.ROLE.ADMIN},
+                    [employee1Email]: {email: employee1Email, role: CONST.POLICY.ROLE.USER, submitsTo: ownerEmail},
+                    [employee2Email]: {email: employee2Email, role: CONST.POLICY.ROLE.USER, submitsTo: employee1Email},
+                },
+            };
+
+            const defaultWorkflow: ApprovalWorkflow = {
+                members: [
+                    {email: employee1Email, displayName: employee1Email},
+                    {email: employee2Email, displayName: employee2Email},
+                ],
+                approvers: [
+                    {email: employee1Email, displayName: employee1Email, isCircularReference: false},
+                    {email: ownerEmail, displayName: ownerEmail, isCircularReference: false},
+                ],
+                isDefault: true,
+            };
+
+            await Onyx.set(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`, policy);
+            await waitForBatchedUpdates();
+
+            updateApprovalWorkflowsOnApproverRemoval({
+                policy,
+                approvalWorkflows: [defaultWorkflow],
+                removedApproverEmails: [employee1Email],
+                ownerEmail,
+                shouldUseApprovalWorkflowRules: false,
+            });
+            await waitForBatchedUpdates();
+
+            const updatedPolicy = await getOnyxValue<Policy>(`${ONYXKEYS.COLLECTION.POLICY}${policyID}`);
+            expect(updatedPolicy?.approver).toBe(ownerEmail);
         });
     });
 });
