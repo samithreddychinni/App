@@ -9,13 +9,15 @@ import useLocalize from '@hooks/useLocalize';
 import useThemeStyles from '@hooks/useThemeStyles';
 
 import {moveSelectionToEnd, scrollToBottom} from '@libs/InputUtils';
+import isEnterWhileComposition from '@libs/KeyboardShortcut/isEnterWhileComposition';
 import Parser from '@libs/Parser';
 import StringUtils from '@libs/StringUtils';
+import variables from '@styles/variables';
 
 import CONST from '@src/CONST';
 
 import type {ComponentRef} from 'react';
-import type {TextInput as RNTextInput} from 'react-native';
+import type {NativeSyntheticEvent, TextInputKeyPressEventData, TextInput as RNTextInput} from 'react-native';
 
 import React, {useRef} from 'react';
 
@@ -31,23 +33,23 @@ function MerchantOrDescriptionCell({merchantOrDescription, shouldShowTooltip, sh
     const {translate} = useLocalize();
     const inputRef = useRef<ComponentRef<typeof RNTextInput> | null>(null);
 
-    const text = !isDescription ? merchantOrDescription : StringUtils.lineBreaksToSpaces(Parser.htmlToText(merchantOrDescription));
+    const editableValue = !isDescription ? merchantOrDescription : Parser.htmlToMarkdown(merchantOrDescription);
 
     // Normalize merchant values for save/equality checks (descriptions can keep whitespace)
     const getNormalizedValue = (value: string) => (isDescription ? value : value.trim());
 
     const {isEditing, localValue, setLocalValue, startEditing, save, cancelEditing} = useInlineEditState(
         canEdit,
-        text,
+        editableValue,
         onSave ? (value) => onSave(getNormalizedValue(value)) : undefined,
         (value, originalValue) => getNormalizedValue(value) === getNormalizedValue(originalValue),
     );
 
-    const isMultilineInput = isDescription;
+    const displayText = !isDescription ? localValue : StringUtils.lineBreaksToSpaces(Parser.htmlToText(Parser.replace(localValue)));
 
     const handleChangeText = (value: string) => {
         // Sanitize line breaks on change for single line inputs.
-        if (!isMultilineInput) {
+        if (!isDescription) {
             setLocalValue(StringUtils.lineBreaksToSpaces(value));
             return;
         }
@@ -56,6 +58,17 @@ function MerchantOrDescriptionCell({merchantOrDescription, shouldShowTooltip, sh
 
     const handleRef = (element: BaseTextInputRef | null) => {
         inputRef.current = element as ComponentRef<typeof RNTextInput> | null;
+    };
+
+    const handleKeyPress = (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+        if (!isDescription) {
+            return;
+        }
+        const nativeEvent = event.nativeEvent;
+        if (nativeEvent.key === 'Enter' && !nativeEvent.shiftKey && !isEnterWhileComposition(nativeEvent as unknown as KeyboardEvent)) {
+            event.preventDefault();
+            save();
+        }
     };
 
     // Multiline TextInputs with autoFocus default cursor to the beginning; manually position it at the end on focus
@@ -90,14 +103,19 @@ function MerchantOrDescriptionCell({merchantOrDescription, shouldShowTooltip, sh
                     value={localValue}
                     onChangeText={handleChangeText}
                     onBlur={save}
-                    onSubmitEditing={save}
+                    onSubmitEditing={isDescription ? undefined : save}
+                    onKeyPress={handleKeyPress}
                     onFocus={handleFocus}
                     autoFocus
-                    submitBehavior="blurAndSubmit"
+                    multiline={isDescription}
+                    autoGrowHeight={isDescription}
+                    maxAutoGrowHeight={isDescription ? variables.textInputAutoGrowMaxHeight : undefined}
+                    type={isDescription ? 'markdown' : undefined}
+                    submitBehavior={isDescription ? 'newline' : 'blurAndSubmit'}
                     // EditableCell is responsible for the cell's hover and focus styles (border, background).
                     // Suppress TextInput's own border and background to avoid visual conflicts.
-                    textInputContainerStyles={styles.editableCellInputStyle}
-                    touchableInputWrapperStyle={styles.editableCellInputStyle}
+                    textInputContainerStyles={[styles.editableCellInputStyle, isDescription && {height: 'auto'}]}
+                    touchableInputWrapperStyle={[styles.editableCellInputStyle, isDescription && {height: 'auto'}]}
                     hideFocusedState
                     shouldApplyPaddingToContainer={false}
                 />
@@ -105,7 +123,7 @@ function MerchantOrDescriptionCell({merchantOrDescription, shouldShowTooltip, sh
         >
             <TextWithTooltip
                 shouldShowTooltip={shouldShowTooltip}
-                text={localValue}
+                text={displayText}
                 numberOfLines={1}
                 style={shouldUseNarrowLayout ? [styles.lh20, styles.pre, styles.justifyContentCenter, styles.flex1] : [styles.lineHeightXLarge]}
                 isSelectable
