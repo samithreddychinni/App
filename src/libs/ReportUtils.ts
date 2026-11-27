@@ -12447,12 +12447,10 @@ function navigateToLinkedReportAction(
 
         const isAncestorShownInRouteBelow =
             routeBelowParams?.reportID === ancestor.report.reportID ||
-            (isReportTransactionThread(ancestor.report) && routeBelowParams?.reportID === ancestor.report.parentReportID);
+            (!!ancestor.report.reportID && routeBelowParams?.reportID === getDisplayedReportID(ancestor.report.reportID, isOffline));
 
         if (routeBelow?.key && isAncestorShownInRouteBelow) {
-            if (routeBelowParams?.reportID === ancestor.report.reportID) {
-                Navigation.setParams({reportActionID: ancestor.reportAction.reportActionID}, routeBelow.key, rhpState?.key);
-            }
+            Navigation.setParams({reportID: ancestor.report.reportID, reportActionID: ancestor.reportAction.reportActionID}, routeBelow.key, rhpState?.key);
             Navigation.goBack();
             return;
         }

@@ -56,6 +56,7 @@ describe('navigateToLinkedReportAction', () => {
     const expenseReport: Report = {
         reportID: EXPENSE_REPORT_ID,
         type: CONST.REPORT.TYPE.EXPENSE,
+        chatReportID: 'chat_expense_report',
     };
 
     const transactionThread: Report = {
@@ -77,15 +78,26 @@ describe('navigateToLinkedReportAction', () => {
         message: [{type: 'COMMENT', html: 'Test comment', text: 'Test comment'}],
     };
 
+    const iouAction: ReportAction<typeof CONST.REPORT.ACTIONS.TYPE.IOU> = {
+        reportActionID: PARENT_IOU_ACTION_ID,
+        actionName: CONST.REPORT.ACTIONS.TYPE.IOU,
+        childReportID: TRANSACTION_THREAD_ID,
+        message: [{type: 'COMMENT', html: 'USD 1.00', text: 'USD 1.00'}],
+        originalMessage: {
+            IOUTransactionID: 'transaction_123',
+            IOUReportID: EXPENSE_REPORT_ID,
+            type: CONST.IOU.REPORT_ACTION_TYPE.CREATE,
+            amount: 100,
+            currency: CONST.CURRENCY.USD,
+        },
+    };
+
     beforeAll(async () => {
         Onyx.init({keys: ONYXKEYS});
         await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${EXPENSE_REPORT_ID}`, expenseReport);
+        await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT}${TRANSACTION_THREAD_ID}`, transactionThread);
         await Onyx.merge(`${ONYXKEYS.COLLECTION.REPORT_ACTIONS}${EXPENSE_REPORT_ID}`, {
-            [PARENT_IOU_ACTION_ID]: {
-                reportActionID: PARENT_IOU_ACTION_ID,
-                actionName: CONST.REPORT.ACTIONS.TYPE.IOU,
-                originalMessage: {type: CONST.IOU.REPORT_ACTION_TYPE.CREATE},
-            },
+            [PARENT_IOU_ACTION_ID]: iouAction,
         });
         await waitForBatchedUpdates();
     });
@@ -96,7 +108,7 @@ describe('navigateToLinkedReportAction', () => {
         jest.clearAllMocks();
     });
 
-    it('should pop thread and not setParams on route below when route below is an expense report and ancestor is its one-transaction thread', () => {
+    it('should pop thread and setParams on route below when route below is an expense report and ancestor is its one-transaction thread', () => {
         mockGetRootState?.mockReturnValue({
             routes: [
                 {
@@ -137,7 +149,11 @@ describe('navigateToLinkedReportAction', () => {
             false,
         );
 
-        expect(mockSetParams).not.toHaveBeenCalled();
+        expect(mockSetParams).toHaveBeenCalledWith(
+            {reportID: TRANSACTION_THREAD_ID, reportActionID: ACTION_ID},
+            'expense-report-route-key',
+            'rhp-state-key',
+        );
         expect(mockGoBack).toHaveBeenCalledTimes(1);
         expect(mockNavigate).not.toHaveBeenCalled();
     });
@@ -183,7 +199,11 @@ describe('navigateToLinkedReportAction', () => {
             false,
         );
 
-        expect(mockSetParams).toHaveBeenCalledWith({reportActionID: ACTION_ID}, 'parent-chat-route-key', 'rhp-state-key');
+        expect(mockSetParams).toHaveBeenCalledWith(
+            {reportID: 'chat_123', reportActionID: ACTION_ID},
+            'parent-chat-route-key',
+            'rhp-state-key',
+        );
         expect(mockGoBack).toHaveBeenCalledTimes(1);
         expect(mockNavigate).not.toHaveBeenCalled();
     });
