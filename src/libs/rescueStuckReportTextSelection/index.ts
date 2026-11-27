@@ -30,15 +30,20 @@ function getCaretRange(x: number, y: number): Range | null {
         return null;
     }
 
-    const position = caretPositionFromPoint.call(document, x, y);
-    if (!position) {
+    try {
+        const position = caretPositionFromPoint.call(document, x, y);
+        if (!position || !isTextNode(position.offsetNode)) {
+            return null;
+        }
+
+        const offset = Math.min(Math.max(0, position.offset), position.offsetNode.textContent?.length ?? 0);
+        const range = document.createRange();
+        range.setStart(position.offsetNode, offset);
+        range.collapse(true);
+        return range;
+    } catch {
         return null;
     }
-
-    const range = document.createRange();
-    range.setStart(position.offsetNode, position.offset);
-    range.collapse(true);
-    return range;
 }
 
 function getReportTextPoint(x: number, y: number): TextPoint | null {
